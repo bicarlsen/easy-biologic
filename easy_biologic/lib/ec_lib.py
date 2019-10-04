@@ -9,7 +9,7 @@
 # ### Methods
 # **connect( address, timeout = 5 ):** Connects to the device at the given address.
 # 
-# **disconnect( address ):** Disconnects from the device at the given address.
+# **disconnect( idn ):** Disconnects given device.
 # 
 # **is_connected( address ):** Checks if teh device at the given address is connected.
 # 
@@ -30,7 +30,7 @@
 # 
 # **start_channel( idn, ch ):** Starts the given device channel.
 # 
-# **start_channels( idn, ch ):** Starts teh given device channels.
+# **start_channels( idn, ch ):** Starts the given device channels.
 # 
 # **srop_channel( idn, ch ):** Stops the given device channel.
 # 
@@ -45,11 +45,95 @@
 
 # standard imports
 import logging
+import os
 import ctypes as c
 import platform
+import pkg_resources
+from enum import Enum
+
+from .ec_errors import EcError
 
 
-# In[23]:
+# ## Constants
+
+# In[8]:
+
+
+class IRange( Enum ):
+    """
+    Current ranges.
+    """
+    p100 = 0
+    n1   = 1
+    n10  = 2
+    n100 = 3
+    u1   = 4
+    u10  = 5
+    u100 = 6
+    m1   = 7
+    m10  = 8
+    m100 = 9
+    a1   = 10 # 1 amp
+    
+    KEEP    = -1
+    BOOSTER = 11
+    AUTO    = 12
+    
+    
+class ERange( Enum ):
+    """
+    Voltage ranges
+    """
+    v2_5 = 0
+    v5   = 1
+    v10  = 2
+    
+    AUTO = 3
+    
+    
+class ConnectionType( Enum ):
+    """
+    Connection types.
+    """
+    GROUNDED = 0
+    FLOATING = 1
+    
+    
+class TechniqueId( Enum ):
+    """
+    Technique identifiers.
+    """
+    NONE  = 0
+    OCV   = 100 # open circuit voltage
+    CA    = 101 # chrono-amperometry
+    CP    = 102 # chrono-potentiometry
+    CV    = 103 # cyclic voltammetry
+    PEIS  = 104 # potentio electrochemical impedance
+    
+    CALIMIT = 157 # chrono-amperometry with limits
+    
+
+class ChannelState( Enum ):
+    """
+    Channel state.
+    """
+    STOP  = 0
+    RUN   = 1
+    PAUSE = 2
+    
+    
+class ParameterType( Enum ):
+    """
+    Paramter type.
+    """
+    INT32    = 0
+    BOOLEAN  = 1
+    SINGLE   = 2
+
+
+# ## Structs
+
+# In[26]:
 
 
 # Device Info Structure
@@ -81,7 +165,7 @@ class ChannelInfo( c.Structure ):
         ( 'BoardVersion',       c.c_int32 ),
         ( 'BoardSerialNumber',  c.c_int32 ),
         ( 'FirmwareVersion',    c.c_int32 ),
-        ( 'XilinkxVersion',     c.c_int32 ),
+        ( 'XilinxVersion',      c.c_int32 ),
         ( 'AmpCode',            c.c_int32 ),
         ( 'NbAmps',             c.c_int32 ),
         ( 'Lcboard',            c.c_int32 ),
@@ -116,7 +200,7 @@ class EccParams( c.Structure ):
     """
     _fields_ = [
         ( 'len',     c.c_int32 ),
-        ( 'pParams', EccParam* 64 )
+        ( 'pParams', c.POINTER( EccParam ) )
     ]
     
     
@@ -145,9 +229,29 @@ class CurrentValues( c.Structure ):
         ( 'OptErr',      c.c_int32 ),
         ( 'OptPos',      c.c_int32 )
     ]
+    
+    
+class DataInfo( c.Structure ):
+    """
+    Represents metadata for the values measured for a technique.
+    Used to parse the data collected from the device.
+    """
+    _fields_ = [
+        ( 'IRQskipped',      c.c_int32  ),
+        ( 'NbRows',          c.c_int32  ),
+        ( 'NbCols',          c.c_int32  ),
+        ( 'TechniqueIndex',  c.c_int32  ),
+        ( 'TechniqueID',     c.c_int32  ),
+        ( 'ProcessIndex',    c.c_int32  ),
+        ( 'loop',            c.c_int32  ),
+        ( 'StartTime',       c.c_double ),
+        ( 'MuxPad',          c.c_int32  )
+    ]
 
 
-# In[24]:
+# ## DLL Methods
+
+# In[ ]:
 
 
 #--- init ---
@@ -159,9 +263,11 @@ bits = int( bits )
 logging.debug( '[biologic_controller] Running on {}-bit platform.'.format( bits ) )
 
 bits = '' if ( bits == 32 ) else '64'
-__dll = c.WinDLL(
-    '../techniques/EClib{}.dll'.format( bits )
+dll_file = os.path.join(
+    pkg_resources.resource_filename( 'easy_biologic', 'techniques' ),
+    'EClib{}.dll'.format( bits )
 )
+__dll = c.WinDLL( dll_file )
 
 # load DLL functions
 # hardware functions
@@ -173,6 +279,9 @@ BL_Disconnect.restype = c.c_int32
 
 BL_TestConnection = __dll[ 'BL_TestConnection' ]
 BL_TestConnection.restype = c.c_int32
+
+BL_LoadFirmware = __dll[ 'BL_LoadFirmware' ]
+BL_LoadFirmware.restype = c.c_int32
 
 BL_IsChannelPlugged = __dll[ 'BL_IsChannelPlugged' ]
 BL_IsChannelPlugged.restype = c.c_bool
@@ -223,7 +332,11 @@ BL_GetData.restype = c.c_int32
 BL_ConvertNumericIntoSingle = __dll[ 'BL_ConvertNumericIntoSingle' ]
 BL_ConvertNumericIntoSingle.restype = c.c_int32
 
-#--- methods ---
+
+# ## Methods
+
+# In[28]:
+
 
 def connect( address, timeout = 5 ):
     """
@@ -239,7 +352,7 @@ def connect( address, timeout = 5 ):
     idn     = c.c_int32()
     info    = DeviceInfo()
     
-    err = raise_exception( BL_Connect(
+    validate( BL_Connect(
         c.byref( address ),
         timeout,
         c.byref( idn ),
@@ -254,15 +367,12 @@ def disconnect( idn ):
     Disconnect from the given device.
     
     :param address: The address of the device.
-    :returns: True if successful, or the error code.
     """
     idn = c.c_int32( idn )
     
-    err = raise_exception(
+    validate(
         BL_Disconnect( idn )
     )
-    
-    return err
     
     
 def is_connected( idn ):
@@ -275,19 +385,68 @@ def is_connected( idn ):
     idn = c.c_int32( idn )
     
     try:
-        err = raise_exception( 
+        validate( 
             BL_TestConnection( idn )
         )
         
     except:
         return False
     
-    if err == 0:
-        return True
+    return True
     
-    else:
-        return False
+
+def init_channels( idn, chs, force_reload = False, bin_file = None, xlx_file = None ):
+    """
+    Initializes a channel by loading its firmware.
     
+    :param idn: Device identifier.
+    :param chs: List of channels to initialize.
+    :param force_reload: Boolean indicating whether to force a firmware reload each time.
+        [Default: False]
+    :param bin: bin file containing, or None to use default.
+        [Default: None]
+    :param xlx_file: xilinx file, or None to use default.
+        [Default: None]
+    """
+    length = max( chs ) + 1
+    results = ( c.c_int32* length )()
+    active = create_active_array(  chs, length )
+    idn = c.c_int32( idn )
+    show_gauge = c.c_bool( False )
+    
+    bin_file = (
+        c.c_void_p() 
+        if ( bin_file is None ) 
+        else c.byref( 
+            c.create_string_buffer( 
+                bin_file.encode( 'utf-8' ) 
+            ) 
+        )
+    )
+    
+    xlx_file = (
+        c.c_void_p() 
+        if ( xlx_file is None ) 
+        else c.byref( 
+            c.create_string_buffer( 
+                xlx_file.encode( 'utf-8' )
+            ) 
+        )
+    )
+    
+    validate(
+        BL_LoadFirmware(
+            idn, 
+            c.byref( active ), 
+            c.byref( results ), 
+            length, 
+            show_gauge,
+            force_reload, 
+            bin_file, 
+            xlx_file
+        )
+    )
+
     
 def is_channel_connected( idn, ch ):
     idn = c.c_int32( idn )
@@ -310,7 +469,7 @@ def get_channels( idn, size = 16 ):
     channels = ( c.c_uint8* size )()
     size = c.c_int32( size )
     
-    err = raise_exception(
+    validate(
         BL_GetChannelsPlugged(
             idn, c.byref( channels ), size
         )
@@ -331,8 +490,8 @@ def channel_info( idn, ch ):
     ch   = c.c_uint8( ch )
     info = ChannelInfo()
     
-    err = raise_exception( 
-        BL_GetChannleInfos(
+    validate( 
+        BL_GetChannelInfos(
             idn, ch, c.byref( info )
         )
     )
@@ -356,23 +515,23 @@ def load_technique(
     :param ch: Channel.
     :param technique: Name of the technique file.
     :param params: EccParams structure for the technique.
-        The full path is not needed, and '.dll' should be excluded.
     :param first: True if the technique is loaded first. [Defualt: True]
     :param last: True if this is the last technique. [Default: True]
     :param verbose: Echoes the sent parameters for debugging. [Default: False]
     """
     idn = c.c_int32( idn )
     ch  = c.c_uint8( ch )
-    technique = c.create_string_buffer( 
-        '../techniques/{}.dll'.format( technique ) 
-    )
+ 
+    technique_path = technique_file( technique )
+    technique = c.create_string_buffer( technique_path.encode( 'utf-8' ) )
+    
     first = c.c_bool( first )
     last  = c.c_bool( last )
     verbose = c.c_bool( verbose )
     
-    err = raise_exception(
+    validate(
         BL_LoadTechnique( 
-            idn, ch, c.byref( technique ), params, first, lsat, verbose 
+            idn, ch, c.byref( technique ), params, first, last, verbose 
         )
     )
     
@@ -432,7 +591,57 @@ def create_parameter( name, value, index = 0, kind = None ):
     return param
 
 
-def update_parameters( idn, ch, technique, params, tech_index = 0 ):
+def combine_parameters( params ):
+    """
+    Creates an ECCParams list of parameters.
+    
+    :param params: List of parameters to combine.
+    :returns: EccParams structure.
+    """
+    num_params = len( params )
+    param_list = ( EccParam* num_params )( *params )
+    length = c.c_int32( num_params )
+    
+    params = EccParams()
+    params.len = length
+    params.pParams = c.cast( param_list, c.POINTER( EccParam ) )
+
+
+def create_parameters( params, index = 0 ):
+    """
+    Creates an EccParams list of parameters.
+    
+    :param params: A dictionary of parameters, with keys as
+        the parameter name and values as the parameter value or a list of values.
+        If a value is a list, one parameter is created for each value.
+    :param index: Starting index for the parameters.
+        For lists of values, the index of the value in the list is added to the index.
+        [Default: 0]
+    :returns: EccParams structure.
+    """
+    param_list = []
+    for name, values in params.items():
+        if type( values ) is not list:
+            # single value given, turn into list
+            values = [ values ]
+            
+        for idx, value in enumerate( values ):
+            # create parameter for each value
+            param = create_parameter( name, value, index + idx )
+            param_list.append( param )
+        
+    num_params = len( param_list )
+    param_list = ( EccParam* num_params )( *param_list )
+    length = c.c_int32( num_params )
+    
+    params = EccParams()
+    params.len = length
+    params.pParams = c.cast( param_list, c.POINTER( EccParam ) )
+    
+    return params
+    
+
+def update_parameters( idn, ch, technique, params, index = 0, device = None ):
     """
     Updates the parameters of a technique.
     
@@ -440,22 +649,23 @@ def update_parameters( idn, ch, technique, params, tech_index = 0 ):
     :param ch: Channel number.
     :param technique: Name of the technique file.
     :param params: New parameters to use as an EccParams struct.
-    :param tech_index: Index of the technique. [Default: 0]
-    :returns: True on success, or error code of failure.
+    :param index: Index of the technique. [Default: 0]
+    :param device: Type of device. Used to modify technique. 
+        [Default: None]
     """
     
     idn = c.c_int32( idn )
     ch  = c.c_uint8( ch )
-    technique = c.create_string_buffer( technique )
-    tech_index = c.c_int32( tech_index )
     
-    err = raise_exception(
+    technique = technique_file( technique, device )
+    technique = c.create_string_buffer( technique.encode( 'utf-8' ) )
+    index = c.c_int32( index )
+    
+    validate(
         BL_UpdateParameters(
-            idn, ch, tech_index, params, technique
+            idn, ch, index, params, c.byref( technique )
         )
     )
-    
-    return err
     
     
 def start_channel( idn, ch ):
@@ -464,18 +674,15 @@ def start_channel( idn, ch ):
     
     :param idn: Device identifier.
     :param ch: Channel to start.
-    :returns: True on success, or error code of failure.
     """
     idn = c.c_int32( idn )
     ch  = c.c_uint8( ch )
     
-    err = raise_exception(
+    validate(
         BL_StartChannel( 
             idn, ch 
         )
     )
-    
-    return err
 
 
 def start_channels( idn, chs ):
@@ -484,19 +691,13 @@ def start_channels( idn, chs ):
     
     :param idn: Device identifier.
     :param chs: List of channels to start.
-    :returns: True on success, or error code of failure.
     """
-    num_chs = max( chs )
-    results = ( c.c_int32()* num_chs )()
-    
-    active = ( c.c_uint8( 0 )* num_chs )()
-    for ch in chs:
-        # activate channel
-        active[ ch ] = 1
-    
+    num_chs = max( chs ) + 1
+    results = ( c.c_int32* num_chs )()
+    active = create_active_array( chs, num_chs )
     idn = c.c_int32( idn )
     
-    err = raise_exception(
+    err = validate(
         BL_StartChannel( 
             idn, c.byref( active ), c.byref( results ), num_chs
         )
@@ -511,12 +712,11 @@ def stop_channel( idn, ch ):
     
     :param idn: Device identifier.
     :param ch: Channel to stop.
-    :returns: True on success, or error code of failure.
     """
     idn = c.c_int32( idn )
     ch  = c.c_uint8( ch )
     
-    err = raise_exception(
+    err = validate(
         BL_StopChannel( 
             idn, ch 
         )
@@ -531,19 +731,13 @@ def stop_channels( idn, chs ):
     
     :param idn: Device identifier.
     :param chs: List of channels to stop.
-    :returns: True on success, or error code of failure.
     """
-    num_chs = max( chs )
-    results = ( c.c_int32()* num_chs )()
-    
-    active = ( c.c_uint8( 0 )* num_chs )()
-    for ch in chs:
-        # activate channel
-        active[ ch ] = 1
-    
+    num_chs = max( chs ) + 1
+    results = ( c.c_int32* num_chs )()
+    active = create_active_array( chs, num_chs )
     idn = c.c_int32( idn )
     
-    err = raise_exception(
+    validate(
         BL_StopChannel( 
             idn, c.byref( active ), c.byref( results ), num_chs
         )
@@ -553,34 +747,75 @@ def stop_channels( idn, chs ):
 
 
 def get_values( idn, ch ):
-        """
-        Gets the current data values on the given device channel.
-        
-        :param idn: Device identifier.
-        :param ch: Channel.
-        :returns: CurrentValues struct.
-        """
-        idn = c.c_int32( idn )
-        ch  = c.c_uint8( ch )
-        values = CurrentValues()
-        
-        err = raise_exception(
-            BL_GetCurrentValues(
-                idn, ch, c.byref( values )
-            )
+    """
+    Gets the current data values on the given device channel.
+
+    :param idn: Device identifier.
+    :param ch: Channel.
+    :returns: CurrentValues object.
+    """
+    idn = c.c_int32( idn )
+    ch  = c.c_uint8( ch )
+    values = CurrentValues()
+
+    validate(
+        BL_GetCurrentValues(
+            idn, ch, c.byref( values )
         )
-        
-        return values
+    )
+
+    return values
     
     
 def get_data( idn, ch ):
     """
     Gets data from the given device channel.
-    """
-    pass
-        
     
-def raise_exception( err ):
+    :param idn: Device identifier.
+    :param ch: Channel.
+    :returns: A tuple of ( data, data_info, current_values ) where
+        data_info is a DataInfo object representing the data's metadata, 
+        data is a data array, and 
+        current_values is a CurrentValues object.
+    """
+    idn  = c.c_int32( idn )
+    ch   = c.c_uint8( ch )
+    data = ( c.c_uint32* 1000 )()
+    info = DataInfo()
+    values = CurrentValues()
+        
+    validate(
+        BL_GetData(
+            idn, ch, c.byref( data ), c.byref( info ), c.byref( values )
+        )
+    )
+
+    return ( data, info, values )
+    
+    
+def convert_numeric( num ):
+    """
+    Converts a numeric value into a single (float).
+    
+    :param num: Numeric value to convert.
+    :returns: Value of numeric as a float.
+    """
+    num = c.c_uint32( num )
+    val = c.c_float()
+    
+    validate( 
+        BL_ConvertNumericIntoSingle( 
+            num, c.byref( val ) 
+        )
+    )
+    
+    return val.value
+
+
+#--- helper functions ---
+
+
+def validate( err ):
     """
     Raises an exception based on the return value of the function
 
@@ -593,11 +828,55 @@ def raise_exception( err ):
         # no error
         return True
     
-    if err == -11:
-        raise RuntimeError( '[ec_lib] (-11 : ERR_GEN_USBLIBRARYERROR) USB library not loaded in memory.')
-
     else:
-        return err
+        raise EcError( err )
+    
+    
+def create_active_array( active, size = None, kind = c.c_uint8 ):
+    """
+    Creates an array of active elements from a list.
+    
+    :param active: List of active elements.
+    :param size: Size of the array. If None the maximum active index is used.
+        [Default: None]
+    :param kind: Kind of array elements. [Default: ctypes.c_uint8]
+    :returns: An array of elements where active elements are 1, and inactive are 0.
+    """
+    if size is None:
+        size = max( active ) + 1
+        
+    arr = ( kind* size )()
+    for index in active:
+        # activate index
+        arr[ index ] = 1
+        
+    return arr
+
+
+def technique_file( technique, device = None ):
+    """
+    Returns the file name of teh given technique for the given device.
+    
+    :param technique: Technique name.
+    :param device: Kind of device. [Default: None]
+    :returns: Technique file.
+    """
+    file_type = '.ecc'
+    sp300_mod = '4'
+    
+    if (
+        device is not None and
+        device.upper() == 'SP-300' and 
+        not technique.endswith( sp300_mod )
+    ):
+        # modify technqiues for SP-300 devices
+        technique += sp300_mod
+        
+    if not technique.endswith( file_type ):
+        # append file type extenstion if needed
+        technique += file_type
+    
+    return technique.lower()
 
 
 # # Work

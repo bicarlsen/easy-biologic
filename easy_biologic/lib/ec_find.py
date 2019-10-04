@@ -15,9 +15,11 @@
 # In[44]:
 
 
+import os
 import logging
 import ctypes as c
 import platform
+import pkg_resources
 
 
 # In[45]:
@@ -91,9 +93,11 @@ bits = int( bits )
 logging.debug( '[ec_find] Running on {}-bit platform.'.format( bits ) )
 
 bits = '' if ( bits == 32 ) else '64'
-__dll = c.WinDLL(
-    '../techniques/blfind{}.dll'.format( bits )
+dll_file = os.path.join( 
+    pkg_resources.resource_filename( 'easy_biologic', 'techniques' ),
+    'blfind{}.dll'.format( bits )
 )
+__dll = c.WinDLL( dll_file )
 
 # load DLL functions
 BL_FindEChemDev = __dll[ 'BL_FindEChemDev' ]
@@ -251,15 +255,3 @@ def raise_exception( err ):
 
 
 # # Work
-
-# In[50]:
-
-
-# find_devices( 'usb' )
-
-
-# In[ ]:
-
-
-
-
