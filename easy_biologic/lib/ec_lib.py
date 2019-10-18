@@ -28,6 +28,8 @@
 # **update_paramters( idn, ch, technique, params, tech_index = 0 ):** 
 # Updates the paramters of a technique on teh given device channel.
 # 
+# **cast_parameters( parameters, types ):** Cast parameters to given types.
+# 
 # **start_channel( idn, ch ):** Starts the given device channel.
 # 
 # **start_channels( idn, ch ):** Starts the given device channels.
@@ -505,7 +507,8 @@ def load_technique(
     technique, 
     params, 
     first = True, 
-    last = True, 
+    last  = True,
+    device  = None,
     verbose = False
 ):
     """
@@ -517,12 +520,14 @@ def load_technique(
     :param params: EccParams structure for the technique.
     :param first: True if the technique is loaded first. [Defualt: True]
     :param last: True if this is the last technique. [Default: True]
+    :param device: Type of device. Used to modify technique. 
+        [Default: None]
     :param verbose: Echoes the sent parameters for debugging. [Default: False]
     """
     idn = c.c_int32( idn )
     ch  = c.c_uint8( ch )
  
-    technique_path = technique_file( technique )
+    technique_path = technique_file( technique, device )
     technique = c.create_string_buffer( technique_path.encode( 'utf-8' ) )
     
     first = c.c_bool( first )
@@ -607,7 +612,7 @@ def combine_parameters( params ):
     params.pParams = c.cast( param_list, c.POINTER( EccParam ) )
 
 
-def create_parameters( params, index = 0 ):
+def create_parameters( params, index = 0, types = None ):
     """
     Creates an EccParams list of parameters.
     
@@ -617,11 +622,19 @@ def create_parameters( params, index = 0 ):
     :param index: Starting index for the parameters.
         For lists of values, the index of the value in the list is added to the index.
         [Default: 0]
+    :param types: A dictionary or Enum mapping parameter keys to types for casting,
+        or None if type casting is not desired.
+        See #cast_parameters.
+        [Default: None]
     :returns: EccParams structure.
     """
+    # cast types if desired
+    if types is not None:
+        params = cast_parameters( params, types )
+    
     param_list = []
     for name, values in params.items():
-        if type( values ) is not list:
+        if not isinstance( values, list ):
             # single value given, turn into list
             values = [ values ]
             
@@ -648,7 +661,7 @@ def update_parameters( idn, ch, technique, params, index = 0, device = None ):
     :param idn: Device identifier.
     :param ch: Channel number.
     :param technique: Name of the technique file.
-    :param params: New parameters to use as an EccParams struct.
+    :param params: EccParams struct of new parameters.
     :param index: Index of the technique. [Default: 0]
     :param device: Type of device. Used to modify technique. 
         [Default: None]
@@ -666,6 +679,55 @@ def update_parameters( idn, ch, technique, params, index = 0, device = None ):
             idn, ch, index, params, c.byref( technique )
         )
     )
+    
+    
+def cast_parameters( parameters, types):
+    """
+    Cast parameters to given types.
+    
+    :param parameters: Dictionary of key value pairs of parameters.
+        If value is a list, each element is cast.
+    :param types: Dictionary or enum from technique_fields 
+        of key type pairs for the parameters.
+    :returns: New dictionary of values cast to given types.
+        If a key is not provided in the types, no change is made to the value.
+    """
+    cast = {}
+    
+    if isinstance( types, dict ):
+        # dictionary passed
+        for key, value in parameters.items():
+            if key in types:
+                # type provided 
+                kind = types[ key ]
+            
+                if isinstance( value, list ):
+                    value = [ kind( val ) for val in value ]
+
+                else:
+                    value = kind( value )
+
+            cast[ key ] = value
+            
+    elif issubclass( types, Enum ):
+        # enum passed
+        for key, value in parameters.items():
+            if key in types.__members__:   
+                kind = types[ key ].value
+                
+                if isinstance( value, list ):
+                    value = [ kind( val ) for val in value ]
+                
+                else:
+                    value = kind( parameters[ key ] )
+                    
+            cast[ key ] = value
+            
+    else:
+        raise TypeError( 'Invalid types provided.')
+         
+    return cast
+            
     
     
 def start_channel( idn, ch ):

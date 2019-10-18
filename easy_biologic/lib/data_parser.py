@@ -46,7 +46,7 @@ def parse( data, info, fields = None ):
         else datum
         for index, datum in enumerate( data )
     ]
-
+    # print( data )
     # group data
     parsed = [
         Datum( *data[ i : i + cols ] ) for i in range( 0, rows* cols, cols )
@@ -82,6 +82,49 @@ def calculate_time( t_high, t_low, data_info, current_value ):
 
 # For holding field info.
 FieldInfo = namedtuple( 'FieldInfo', [ 'name', 'type' ] )
+
+
+# In[ ]:
+
+
+class VMP3_Fields():
+    """
+    Holds technique field definitions.
+    """
+    # for convenience
+    TID     = ecl.TechniqueId 
+    INT32   = ecl.ParameterType.INT32
+    BOOL    = ecl.ParameterType.BOOLEAN
+    SINGLE  = ecl.ParameterType.SINGLE
+    FI      = FieldInfo
+    
+    OCV = [
+        FI( 't_high',   INT32   ),  
+        FI( 't_low',    INT32   ),
+        FI( 'voltage',  SINGLE  ),
+        FI( 'current',  SINGLE  )
+    ]
+    
+    CP = [
+        FI( 't_high',  INT32  ),
+        FI( 't_low',   INT32  ),
+        FI( 'voltage', SINGLE ),
+        FI( 'current', SINGLE ),
+        FI( 'cycle',   INT32  )
+    ]
+    
+    CA      = CP
+    CPLIMIT = CP
+    CALIMIT = CP
+    
+    CV = [
+        FI( 't_high',  INT32  ),
+        FI( 't_low',   INT32  ),
+        FI( 'control', SINGLE ),
+        FI( 'current', SINGLE ),
+        FI( 'voltage', SINGLE ),
+        FI( 'cycle',   INT32  )
+    ]
 
 
 # In[34]:

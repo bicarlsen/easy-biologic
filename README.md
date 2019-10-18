@@ -1,2 +1,373 @@
-# Template ReadMe
-> Install with python -m pip install ...
+# Easy Biologic
+A library allowing easy control over BioLogic devices.
+High and low level control over Biologic devices are available. 
+Low level control is included in the `lib` subpackage, while high level control
+is available in the main module. 
+> Install with `python -m pip install easy-biologic`
+
+## High Level API
+There are two high level API modules containing three classes, and two convenience modules.
+
+### Biologic Device
+Represents an instance of a Biologic Device.
+
+#### Methods
+**BiologicDevice( address, timeout = 5 ):** Creates a new Biologic Device representing the device conencted at `address`.
+
+**connect( bin_file, xlx_file ):** Connects to the device, loading the bin and xlx file if provided.
+
+**disconnect():** Disconnects from the device.
+
+**is_connected():** Whether the device is connected or not.
+
+**load_technique( ch, technique, params, index = 0, last = True, types = none ):** Loads a technique on to the given device channel.
+
+**load_techniques( ch, techniques, parameters, types = None ):** Loads a series of techniques on to the given device channel.
+
+**update_parameters( ch, technique, parameters, index = 0, types = None ):** Update the parameters of the given technqiue on the specified device channel.
+
+**start_channel( ch ):** Starts the given channel.
+
+**start_channels( chs = None ):** Starts multiple channels.
+
+**stop_channel( ch ):** Stops the given channel.
+
+**stop_channels( chs = None ):** Stops the given channels.
+
+**channel_info( ch ):** Returns information about the given channel.
+
+**get_values( ch ):** Returns current values of the given channel.
+
+**get_data( ch ):** Returns buffered data of the given channel.
+
+
+#### Properties
+**address:** Connection address of the device.
+**idn:** ID of the device.
+**kind:** Device model.
+**info:** DeviceInfo structure.
+**plugged:** List of available channels. 
+**channels:** List of ChannelInfo structures.
+**techniques:** List of TechParams loaded on each channel.
+
+### Biologic Program
+`Abstract Class`
+Represents a program to be run on a device channel.
+
+#### Methods
+**BiologicProgram( device, channel, params, autoconnect = True, barrier = None ):** Creates a new program.
+
+**on_data( callback, index = None ):** Retgisters a callback function to run when data is collected.
+
+**run():** Runs the program.
+
+**save_data( file, append = False ):** Saves data to the given file.
+
+**_connect():** Connects to the device
+
+#### Properties
+**device:** BiologicDevice. <br>
+**channel:** Device channel. <br>
+**params:** Passed in parameters. <br>
+**autoconnect:** Whether connection to the device should be automatic or not. <br>
+**barrier:** A threading.Barrier to use for channel syncronization. [See ProgramRummer] <br>
+**field_titles:** Column names for saving data. <br>
+**data:** Data collected during the program. <br>
+**status:** Status of the program. <br>
+**fields:** Data fields teh program returns. <br>
+**technqiues:** List of techniques the program uses.
+
+### Program Runner
+Represents a program to be run on a device channel.
+
+#### Methods
+**ProgramRunner( programs, sync = False ):** Creates a new program runner.
+
+**start():** Runs the programs.
+
+#### Properties
+**sync:** Whether to sync the threads or not. If True a threading.sync is 
+
+### Base Programs
+Contains basic implementations of BiologicPrograms.
+
+#### OCV
+##### Params
+**time:** Run time in seconds.
+
+**time_interval:** Maximum time between readings. 
+[Default: 1]
+
+**voltage_interval:** Maximum interval between voltage readings.
+[Default: 0.01]
+    
+#### CA
+##### Params
+**voltages:** List of voltages.
+
+**durations:** List of times in seconds.
+
+**vs_initial:** If step is vs. initial or previous. 
+[Default: False] 
+
+**time_interval:** Maximum time interval between points.
+[Default: 1]
+    
+**current_interval:** Maximum current change between points.
+[Default: 0.001]
+            
+**current_range:** Current range. Use ec_lib.IRange.
+[Default: IRange.m10 ]
+            
+##### Methods
+**update_voltage( voltages, durations = None, vs_initial = None ):** Updates the voltage. 
+
+#### CALimit
+##### Params
+**voltages:** List of voltages.
+
+**durations:** List of times in seconds.
+
+**vs_initial:** If step is vs. initial or previous. 
+[Default: False] 
+
+**time_interval:** Maximum time interval between points.
+[Default: 1]
+    
+**current_interval:** Maximum current change between points.
+[Default: 0.001]
+            
+**current_range:** Current range. Use ec_lib.IRange.
+[Default: IRange.m10 ]
+
+##### Methods
+**update_voltage( voltages, durations = None, vs_initial = None ):** Updates the voltage.
+
+#### JV_Scan
+Performs a JV scan.
+
+##### Params
+**start:** Start voltage. 
+[ Defualt: 0 ]
+
+**end:** End voltage.
+
+**step:** Voltage step. 
+[Default: 0.01]
+
+**rate:** Scan rate in mV/s. 
+[Default: 10]
+
+**average:** Average over points. 
+[Default: False]
+ 
+
+#### MPP_Tracking
+Performs MPP tracking.
+
+##### Params
+**init_vmpp:** Initial v_mpp.
+
+**probe_step:** Voltage step for probe. 
+[Default: 0.01 V]
+
+**probe_points:** Number of data points to collect for probe. 
+[Default: 5]
+
+**probe_interval:** How often to probe in seconds. 
+[Default: 2]
+
+**run_time:** Run time in seconds.
+
+**record_interval:** How often to record a data point in seconds. 
+[Default: 1]
+
+#### MPP_Tracking_Intermittent
+Performs MPP tracking with perdiodic voltage holds.
+
+##### Params
+**init_vmpp:** Initial v_mpp.
+
+**probe_step:** Voltage step for probe. 
+[Default: 0.01 V]
+
+**probe_points:** Number of data points to collect for probe. 
+[Default: 5]
+
+**probe_interval:** How often to probe in seconds. 
+[Default: 2]
+
+**run_time:** Run time in seconds.
+
+**hold_interval:** How often to hold the voltage.
+
+**hold_time:** How long to hold the voltage.
+
+**record_interval:** How often to record a data point in seconds. 
+[Default: 1]
+
+
+#### MPP
+Runs MPP tracking and finds the initial Vmpp by finding the Voc, then performing a JV scan.
+
+##### Params
+**init_vmpp:** Initial v_mpp.
+
+**probe_step:** Voltage step for probe. 
+[Default: 0.01 V]
+
+**probe_points:** Number of data points to collect for probe. 
+[Default: 5]
+
+**probe_interval:** How often to probe in seconds. 
+[Default: 2]
+
+**run_time:** Run time in seconds.
+
+**record_interval:** How often to record a data point in seconds. 
+[Default: 1]
+
+#### MPP_Intermittent
+Runs MPP tracking with voltage holds and finds the initial Vmpp by finding the Voc, then performing a JV scan.
+
+##### Params
+**init_vmpp:** Initial v_mpp.
+
+**probe_step:** Voltage step for probe. 
+[Default: 0.01 V]
+
+**probe_points:** Number of data points to collect for probe. 
+[Default: 5]
+
+**probe_interval:** How often to probe in seconds. 
+[Default: 2]
+
+**run_time:** Run time in seconds.
+
+**hold_interval:** How often to hold the voltage.
+
+**hold_time:** How long to hold the voltage.
+
+**record_interval:** How often to record a data point in seconds. 
+[Default: 1]
+
+### Find Devices
+A convenience script for finding connected devices.
+
+## Low Level API
+The low level API gives direct control of the Biologic device using the provided DLL libraries. The subpackage contains five modules.
+
+### EC Lib
+Contains methods converting the `BL_*` DLL functions for use, enumeration classes to encapsulate program and device states, and C Structures for sending and receiving data from th device.
+
+#### Methods
+**connect( address, timeout = 5 ):** Connects to the device at the given address.
+
+**disconnect( idn ):** Disconnects given device.
+
+**is_connected( address ):** Checks if teh device at the given address is connected.
+
+**is_channel_connected( idn, ch ):** Checks whether the given device channel is connected.
+
+**get_channels( idn, length = 16 ):** Returns a list of booleans of whether the cahnnel at the index exists.
+
+**channel_info( idn, ch ):** Returns a ChannlInfo struct of the given device channel.
+
+**load_technique( idn, ch, technique, params, first = True, last = True, verbose = False ):** 
+Loads the technique with parameter on the given device channel.
+
+**create_parameter( name, value, index, kind = None ):** 
+Creates an EccParam struct.
+
+**update_paramters( idn, ch, technique, params, tech_index = 0 ):** 
+Updates the paramters of a technique on teh given device channel.
+
+**cast_parameters( parameters, types ):** Cast parameters to given types.
+
+**start_channel( idn, ch ):** Starts the given device channel.
+
+**start_channels( idn, ch ):** Starts the given device channels.
+
+**srop_channel( idn, ch ):** Stops the given device channel.
+
+**srop_channels( idn, chs ):** Stops the given device channels.
+
+**get_values( idn, ch ):** Gets the current values and states of the given device channel.
+
+**raise_exception( err ):** Raises an exception based on a calls error code. 
+
+#### Enum Classes
+**IRange:** Current ranges. <br>
+Values: [ p100, n1, n10, n100, u1, u10, u100, m1, m10, m100, a1, KEEP, BOOSTER, AUTO ]
+
+**ERange:** Voltage ranges. <br>
+Values: [ v2_5, v5, v10, AUTO ]
+
+**ConnectionType:** Whether the device is floating or grounded. <br>
+Values: [ GROUNDED, FLOATING ]
+
+**TechniqueId:** ID of the technique. (Not fully implemented.) <br>
+Values: [ NONE, OCV, CA, CP, CV, PEIS, CALIMIT ]
+
+**ChannelState:** State of the channel. <br>
+Values: [ STOP, RUN, PAUSE ]
+
+**ParameterType:** Type of a parameter. <br>
+Values: [ INT32, BOOLEAN, SINGLE, FLOAT ]
+(FLOAT is an alias of SINGLE.)
+
+#### Structures
+**DeviceInfo:** Information representing the device. Used by `connect()`. <br>
+Fields: [ DeviceCode, RAMSize, CPU, NumberOfChannles, NumberOfSlots, FirmwareVersion, FirmwareDate_yyyy, FirmwareDate_mm, FirmwareDate_dd, HTdisplayOn, NbOfConnectedPC ]
+
+**ChannelInfo:** Information representing a device channel. Used by `channel_info()`. <br>
+Fields: [ Channel, BoardVersion, BoardSerialNumber, FirmwareVersion, XilinxVersion, AmpCode, NbAmps, Lcboard, Zboard, RESERVED, MemSize, State, MaxIRange, MinIRange, MaxBandwidth, NbOfTechniques ]
+
+**EccParam:** A technique parameter. <br>
+Fields: [ ParamStr, ParamType, ParamVal, ParamIndex ]
+
+**EccParams:** A bundle of technique parameters. <br>
+Fields: [ len, pParams ]
+
+**CurrentValues:** Values measured from and states of the device. <br>
+Fields: [ State, MemFilled, TimeBase, Ewe, EweRangeMin, EweRangeMax, Ece, EceRangeMin, EceRangeMax, Eoverflow, I, IRange, Ioverflow, ElapsedTime, Freq, Rcomp, Saturation, OptErr, OptPos ]
+
+**DataInfo:** Metadata of measured data. <br>
+Fields: [ IRQskipped, NbRows, NbCols, TechniqueIndex, TechniqueID, processIndex, loop, StartTime, MuxPad ]
+
+### Data Parser
+Parses data received from a technique and contains technique fields for different device types.
+
+#### Methods
+**parse( datam info, fields = None ):** Parses data received from a technique.
+
+**calculate_time( t_high, t_low, data_info, current_value ):** Calculates elapsed time from time data.
+
+#### Classes
+**VMP3_Fields:** Contains technqiue fields for VMP3 devices. 
+(Not all techniques are implemented)
+Properties: [ OCV, CP, CA, CPLIMIT, CALIMIT, CV ]
+
+**SP300_Fields:** Contains technqiue fields for SP-300 devices. 
+(Not all techniques are implemented)
+Properties: [ OCV, CP, CA, CPLIMIT, CALIMIT, CV ]
+
+### EC Find
+Implements the BL Find DLL.
+
+#### Methods
+All BL Find DLL functions are implemented under the same name.
+
+**find_devices( connection = None ):** Finds conencted devices.
+
+### Technique Fields
+Parameter types for techniques. (Not all techniques are implemented.)
+
+#### Classes
+OCV, CV, CA, CALIMIT
+
+### EC Errors
+Implements EC errors.
+
+#### Classes
+**EcError( value = None, code = None, message = None )** 

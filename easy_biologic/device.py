@@ -198,21 +198,36 @@ class BiologicDevice:
         return ecl.is_connected( self.idn )
         
         
-    def load_technique( self, ch, technique, params, index = 0, last = True ):
+    def load_technique( 
+        self, 
+        ch, 
+        technique, 
+        params, 
+        index = 0, 
+        last = True,
+        types = None
+    ):
         """
-        Loads a single technique on to the gievn channel.
+        Loads a single technique on to the given channel.
         
         :param ch: The channel to load the technique on to.
         :param technique: Name of the technique to load.
         :param params: A dictionary of parameters to use.
         :param index: Index of the technique. [Default: 0]
         :param last: Whether this is the last technique. [Default: True]
+        :param types: List of dictonaries or Enums from technique_fields 
+            to cast parameters, or None if no casting is desired. 
+            [Default: None]
         """
         if self.idn is None:
             # not connected
             raise RuntimeError( 'Device not connected.')
         
         first = ( index is 0 )
+        
+        if types is not None:
+            params = ecl.cast_parameters( params, types )
+            
         ecc_params = ecl.create_parameters( params, index )
         technique = ecl.technique_file( technique, self.kind )
         
@@ -226,7 +241,7 @@ class BiologicDevice:
         )
     
     
-    def load_techniques( self, ch, techniques, parameters ):
+    def load_techniques( self, ch, techniques, parameters, types = None ):
         """
         Loads a series of techniques on to the given channel.
         
@@ -234,15 +249,34 @@ class BiologicDevice:
         :param techniques: A list of techniques.
         :param parameters: A list of dictionaries of key: value parameters,
             to use for the corresponding technique.
+        :param types: List of dictonaries or Enums from technique_fields 
+            to cast parameters, or None if no casting is desired. 
+            [Default: None]
         """
         for index, technique in enumerate( techniques ):
             params = parameters[ index ]
             last = ( index == len( techniques ) - 1 )
             
-            self.load_technique( ch, tech, params, index, last )
+            if isinstance( types, list ):
+                kinds = types[ index ]
+                
+            elif types is None:
+                kinds = None
+                
+            else:
+                raise TypeError( 'Invalid types provided.')
+                
+            self.load_technique( ch, tech, params, index, last, kinds )
     
     
-    def update_parameters( self, ch, technique, parameters, index = 0 ):
+    def update_parameters( 
+        self, 
+        ch, 
+        technique, 
+        parameters, 
+        index = 0, 
+        types = None 
+    ):
         """
         Updates technique parameters.
         
@@ -250,8 +284,11 @@ class BiologicDevice:
         :param technique: Name of the technique.
         :param parameters: Dictionary of new parameter-values.
         :param index: Index of the technique. [Default: 0]
+        :param types: Dictonary or Enum from technique_fields 
+            to cast parameters, or None if no casting is desired. 
+            [Default: None]
         """
-        ecc_params = ecl.create_parameters( parameters, index )
+        ecc_params = ecl.create_parameters( parameters, index, types )
         
         ecl.update_parameters( 
             self.idn, ch, technique, ecc_params, index, self.kind 
@@ -336,8 +373,8 @@ class BiologicDevice:
         Gets data stored on the channel.
         
         :param ch: Channel.
-        :returns: A list of dictionaries of key-value pairs.
-        """
+        :returns: TechData object with properties [ data, info, value ].
+        """  
         
         ( data, info, values ) = ecl.get_data( self.idn, ch )
         return TechData( data, info, values )

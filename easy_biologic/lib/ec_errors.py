@@ -66,6 +66,11 @@ class EcError( Exception ):
         -402: (
             'ERR_TECH_ECCFILECORRUPTED',
             'ECC file corrupted.'
+        ),
+        
+        -403: (
+            'ERR_TECH_LOADTECHNIQUEFAILED',
+            'Cannot load the ECC file.'
         )
     }
     
