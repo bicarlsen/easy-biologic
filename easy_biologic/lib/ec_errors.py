@@ -18,6 +18,11 @@ class EcError( Exception ):
             'No instrument connected.' 
         ),
         
+        -4: (
+            'ERR_GEN_INVALIDPARAMETERS',
+            'Invalid function parameters.'
+        ),
+        
         -9: (
             'ERR_GEN_ECLAB_LOADED',
             'ECLab firmware laoded on instrument.'
@@ -26,6 +31,11 @@ class EcError( Exception ):
         -11: ( 
             'ERR_GEN_USBLIBRARYERROR', 
             'USB library not loaded in memory.' 
+        ),
+        
+        -12: (
+            'ERR_GEN_FUNCTIONINPROGRESS',
+            'Function of the library already in progress.'
         ),
         
         -200: (
@@ -104,12 +114,6 @@ class EcError( Exception ):
             out = ''
         
         super( EcError, self ).__init__( out )
-
-
-# In[ ]:
-
-
-
 
 
 # # Work

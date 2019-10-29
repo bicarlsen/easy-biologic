@@ -3,11 +3,51 @@
 
 # # Biologic Programs
 
+# ## Biologic Program 
+# `Abstract Class`
+# Represents a program to be run on a device channel.
+# 
+# ### Methods
+# **BiologicProgram( device, channel, params, autoconnect = True, barrier = None ):** Creates a new program.
+# 
+# **on_data( callback, index = None ):** Retgisters a callback function to run when data is collected.
+# 
+# **run():** Runs the program.
+# 
+# **save_data( file, append = False ):** Saves data to the given file.
+# 
+# **_connect():** Connects to the device
+# 
+# ### Properties
+# **device:** BiologicDevice.
+# **channel:** Device channel.
+# **params:** Passed in parameters.
+# **autoconnect:** Whether connection to the device should be automatic or not.
+# **barrier:** A threading.Barrier to use for channel syncronization. [See ProgramRummer]
+# **field_titles:** Column names for saving data.
+# **data:** Data collected during the program.
+# **status:** Status of the program.
+# **fields:** Data fields teh program returns.
+# **technqiues:** List of techniques the program uses.
+# 
+# ## Program Runner
+# Represents a program to be run on a device channel.
+# 
+# ### Methods
+# **ProgramRunner( programs, sync = False ):** Creates a new program runner.
+# 
+# **start():** Runs the programs.
+# 
+# ### Properties
+# **sync:** Whether to sync the threads or not. If True a threading.sync is 
+# 
+
 # In[1]:
 
 
 import os
 import logging
+import signal
 import asyncio
 import threading
 from abc import ABC
@@ -24,6 +64,8 @@ DataSegment = namedtuple( 'DataSegment', [
     'data', 'info', 'values'
 ] )
 
+CallBack = namedtuple( 'CallBack', [ 'function', 'args', 'kwargs' ] )
+
 
 # In[1]:
 
@@ -34,7 +76,7 @@ class ProgramRunner():
     each in its own thread.
     """
     
-    def __init__( self, programs, sync = False ):
+    def __init__( self, programs, sync = False, timeout = 5 ):
         """
         Create a Program Runner.
         
@@ -43,13 +85,18 @@ class ProgramRunner():
             with keys [program, params] where the program value
             is the program instance to run, and params is a dictionary
             of parameters to pass to #run of the program.
-        :params sync: Whether threads should be synced or not.
+        :param sync: Whether threads should be synced or not.
             Relies on programs using threading.Barrier.
             [Default: False]
+        :param timeout: Threading timeout in seconds. Used for signal interuptions.
+            [Default: 5]
         """
         self.programs = programs
         self.sync = sync
+        self.timeout = timeout
+        
         self.__threads = []
+        self._stop_event = threading.Event()
         
         if self.sync:
             self.barrier = threading.Barrier( len( programs ) )
@@ -61,6 +108,12 @@ class ProgramRunner():
                 )
                 
                 prg.barrier = self.barrier
+                
+        # register interupt signal
+        signal.signal(
+            signal.SIGINT,
+            self.stop
+        )
         
     
     @property
@@ -80,12 +133,14 @@ class ProgramRunner():
             if isinstance( prg, dict ):
                 # run params passed in
                 program = prg[ 'program' ]
-                params = prg[ 'params' ]
+                params  = prg[ 'params' ]
                 
             else:
                 # only program passed, no run params
                 program = prg
                 params = {}
+            
+            program._stop_event = self._stop_event
             
             t = threading.Thread(
                 target = program.run,
@@ -94,6 +149,29 @@ class ProgramRunner():
             
             self.__threads.append( t )
             t.start()
+            
+    
+    def wait( self ):
+        """
+        Wait for all threads to finish.
+        """
+        for thread in self.threads:
+            thread.join()
+
+        # TODO: Poll is alive with join timeout to allow signals
+#         is_alive = [ False ]* len( self.threads )
+#         while not all( is_alive ):
+#             for index, thread in enumerate( self.threads ):
+#                 is_alive[ index ] = thread.is_alive()
+#                 thread.join( self.timeout )
+            
+            
+    def stop( self, signal, frame ):
+        """
+        Sets stop event.
+        """
+        logging.warning( "Halting programs..." )
+        self._stop_event.set()
 
 
 # In[1]:
@@ -113,7 +191,9 @@ class BiologicProgram( ABC ):
         channel, 
         params, 
         autoconnect = True,
-        barrier = None
+        barrier = None,
+        stop_event = None,
+        threaded = False
     ):
         """
         Initialize instance parameters.
@@ -124,6 +204,11 @@ class BiologicProgram( ABC ):
         :param autoconnect: Automatically connect and disconnect to device during run.
             [Default: True]
         :param barrier: threading.Barrier used for synchronization across channels.
+            [Default: None]
+        :param stop_event: threading.Event indicating to stop the program.
+            [Default: None]
+        :param threaded: Indicated if the program is running as a thread.
+            [Default: False]
         """
         self.device   = device
         self.channel  = channel
@@ -138,8 +223,16 @@ class BiologicProgram( ABC ):
         self._data_fields = None # technique fields
         self._parameter_types = None # parameter types for the technqiue
         
-        # callbacks
+        self._threaded = threaded
+        self._stop_event = stop_event
         self._cb_data = [] 
+
+        # register interupt signal
+        if not self._threaded:
+            signal.signal(
+                signal.SIGINT,
+                self.stop
+            )
     
     #--- properties ---
     
@@ -182,7 +275,7 @@ class BiologicProgram( ABC ):
         
         :param cb: A callback function to be called.
             The function should accept one parameter of type
-            biologic_device.TechData, a namedtuple with properties
+            DataSegment, a namedtuple with properties
             [ data, info, values ], as returned by BiologicDevice.get_data().
         :param index: Index at which to run the callback or None to append. 
             If index exceeds current length of callback list, then function is appended.
@@ -217,15 +310,23 @@ class BiologicProgram( ABC ):
         """
         mode = 'a' if append else 'w'
         
-        with open( file, mode ) as f:
-            if not append:
-                # write header only if not appending
-                f.write( ', '.join( self.field_titles ) )
-                f.write( '\n' )
+        try:
+            with open( file, mode ) as f:
+                if not append:
+                    # write header only if not appending
+                    f.write( ', '.join( self.field_titles ) )
+                    f.write( '\n' )
 
-            for datum in self.data:
-                f.write( ', '.join( map( str, datum ) ) )
-                f.write( '\n' )
+                for datum in self.data:
+                    f.write( ', '.join( map( str, datum ) ) )
+                    f.write( '\n' )
+                    
+        except Error as err:
+            if self._threaded:
+                logging.warning( '[#save_data] CH{}: {}'.format( self.channel, err ) )
+                
+            else:
+                raise err
 
     
     #--- protected methods ---
@@ -245,6 +346,17 @@ class BiologicProgram( ABC ):
         """
         if self.device.is_connected():
             self.device.disconnect()
+            
+            
+    def stop( self, signal, frame ):
+        """
+        Sets stop event.
+        """
+        if self._stop_event is None:
+            logging.warning( 'No stop event is present on channel {}.'.format( self.channel ) )
+            return
+                
+        self._stop_event.set()
          
     
     def _run( self, technique, params, fields = None, interval = 1 ):
@@ -331,6 +443,16 @@ class BiologicProgram( ABC ):
         data = []
         state = True
         while ( state is not ecl.ChannelState.STOP ):
+            if ( # stop signal received
+                self._stop_event is not None
+                and self._stop_event.is_set()
+            ):
+                logging.warning( 
+                    'Halting program on channel {}.'.format( self.channel ) 
+                )
+                
+                break
+                
             await asyncio.sleep( interval ) # wait
             
             # retrieve data

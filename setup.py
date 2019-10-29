@@ -25,6 +25,5 @@ setuptools.setup(
         'easy-biologic': [
             'techniques/*'
         ]
-
     }
 )
