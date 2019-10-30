@@ -160,7 +160,7 @@
 # **record_interval:** How often to record a data point in seconds. 
 # [Default: 1]
 
-# In[3]:
+# In[ ]:
 
 
 import os
@@ -175,7 +175,7 @@ from .lib import data_parser as dp
 from .lib import technique_fields as tfs
 
 
-# In[1]:
+# In[ ]:
 
 
 class CallBack_Timeout:
@@ -191,7 +191,8 @@ class CallBack_Timeout:
         timeout,
         repeat = True, 
         args = [], 
-        kwargs = {} 
+        kwargs = {},
+        timeout_type = 'interval'
     ):
         """
         Creates a CallBack_Timeout.
@@ -209,16 +210,21 @@ class CallBack_Timeout:
             [Default: []]
         :param kwargs: Dictionary of keywrod arguments to pass to the callback function.
             [Default: {}]
+        :param timeout_type: Type of timeout.
+            Values are [ 'interval', 'between' ]
+            interval: Time between callback starts
+            between: Time between last finish and next start
+            [Default: 'interval']
         """
         self.__program = program
         self.__cb = CallBack( cb, args, kwargs )
         self.timeout  = timeout
+        self.timeout_type = timeout_type
         self.is_alive = False
         
         self.repeat = 1 if ( repeat is False ) else repeat
         
-        self.__calls   = 0
-        self.__elapsed = 0
+        self.__calls     = 0
         self.__last_call = None
         
         
@@ -274,11 +280,15 @@ class CallBack_Timeout:
         kwargs = self.callback.kwargs
         
         # internal trackers
-        self.__last_call = time.time()
         self.__calls += 1
+        if self.timeout_type is 'interval':
+            self.__last_call = time.time()
         
         # callback
         cb( self.__program, *args, **kwargs )
+        
+        if self.timeout_type is 'between':
+            self.__last_call = time.time()
         
         
     def start( self ):
@@ -679,7 +689,10 @@ class CALimit( BiologicProgram ):
             params[ 'vs_initial' ] = vs_initial
         
         self.device.update_parameters(
-            self.channel, 'calimit', params
+            self.channel, 
+            'calimit', 
+            params, 
+            types = self._parameter_types
         )
 
 
@@ -774,7 +787,7 @@ class JV_Scan( BiologicProgram ):
 # In[ ]:
 
 
-class MPP_Tracking( BiologicProgram ):
+class MPP_Tracking( CALimit ):
     """
     Run MPP tracking.
     """
@@ -798,6 +811,7 @@ class MPP_Tracking( BiologicProgram ):
         record_interval: How often to record a data point in seconds.
             [Default: 1]
         """
+        # set up params
         defaults = {
             'probe_step':      0.01,
             'probe_points':    5,
@@ -806,21 +820,23 @@ class MPP_Tracking( BiologicProgram ):
         }
         params = set_defaults( params, defaults )
         
+        run_time        = params[ 'run_time' ]
+        self.v_mpp      = params[ 'init_vmpp' ]
+        self.probe_step = params[ 'probe_step' ]
+        
+        # ca parameters
+        params[ 'voltages' ]  = [ self.v_mpp ]
+        params[ 'durations' ] = [ run_time ]
+        params[ 'time_interval' ] = params[ 'record_interval' ]
+        
         super().__init__( 
             device, 
             channel, 
             params, 
             autoconnect = autoconnect, 
-            barrier = barrier,
+            barrier  = barrier,
             threaded = threaded
         )
-        
-        self.v_mpp = params[ 'init_vmpp' ]
-        self.probe_step = params[ 'probe_step' ]
-        self.autoconnect = autoconnect
-        
-        self._techniques = [ 'ca' ]
-        self.field_titles = []
         
         # timers
         self.last_probe = time.time()
@@ -829,7 +845,15 @@ class MPP_Tracking( BiologicProgram ):
         self._cb_timeout = []
     
     
-    def on_timeout( self, cb, timeout, repeat = True, args = [], kwargs = {} ):
+    def on_timeout( 
+        self, 
+        cb, 
+        timeout,
+        repeat = True, 
+        args   = [], 
+        kwargs = {},
+        timeout_type = 'interval'
+    ):
         """
         Register a timeout callback to run during MPP tracking.
         Callbacks are run after every hold and probe sequence.
@@ -842,14 +866,20 @@ class MPP_Tracking( BiologicProgram ):
             [Default: []]
         :param kwargs: Dictionary of keywrod arguments to pass to the callback function.
             [Default: {}]
+        :param timeout_type: Type of timeout.
+            Values are [ 'interval', 'between' ]
+            interval: Time between callback starts
+            between: Time between last finish and next start
+            [Default: 'interval']
         """
         callback = CallBack_Timeout( 
             self,
             cb, 
             timeout, 
-            repeat, 
-            args, 
-            kwargs 
+            repeat = repeat, 
+            args   = args, 
+            kwargs = kwargs,
+            timeout_type = timeout_type
         )
         
         self._cb_timeout.append( callback )
@@ -861,34 +891,19 @@ class MPP_Tracking( BiologicProgram ):
             None if automatic saving is not desired.
             [Default: None]
         """
-        run_time = self.params[ 'run_time' ]
-        ca_params = {
-            'voltages':  [ self.v_mpp ],
-            'durations': [ run_time ],
-            'time_interval': self.params[ 'record_interval' ],
-        }
-        
-        self.ca_pg = CALimit(
-            self.device,
-            self.channel,
-            ca_params,
-            autoconnect = self.autoconnect,
-            barrier  = self.barrier,
-            threaded = self._threaded
-        )
 
         # start callbacks
         for cb in self._cb_timeout:
             cb.start()
         
-        self.ca_pg.run( retrieve_data = False )
+        super().run( retrieve_data = False )
         self.__hold_and_probe( file )  # hold and probe
         
         # program end
         if self.autoconnect is True:
             self._disconnect()
         
-        self.ca_pg.save_data( file )
+        self.save_data( file )
         
     #--- helper functions ---           
             
@@ -934,7 +949,7 @@ class MPP_Tracking( BiologicProgram ):
                 break
                 
             # probe
-            self.ca_pg.update_voltages( [ self.v_mpp + self.probe_step ] )
+            self.update_voltages( [ self.v_mpp + self.probe_step ] )
             ( probe_state, probe_segment ) = asyncio.run( 
                 self.__hold_and_retrieve( probe_time ) 
             )
@@ -953,11 +968,11 @@ class MPP_Tracking( BiologicProgram ):
             
             # set new v_mpp
             self.__new_v_mpp( hold_pwr, probe_pwr )
-            self.ca_pg.update_voltages( [ self.v_mpp ] )
+            self.update_voltages( [ self.v_mpp ] )
 
             # save intermediate data
             if file is not None:
-                self.ca_pg.save_data( file )
+                self.save_data( file )
                 
     
     async def __hold_and_retrieve( self, duration ):
@@ -973,7 +988,7 @@ class MPP_Tracking( BiologicProgram ):
             
         self.last_probe = time.time() # reset last probe time
         
-        segment = self.ca_pg._retrieve_data_segment()
+        segment = self._retrieve_data_segment()
         state = ecl.ChannelState( segment.values.State  )
         
         return ( state, segment )
@@ -994,8 +1009,8 @@ class MPP_Tracking( BiologicProgram ):
             datum.cycle
         )
         
-        self.ca_pg._data += [
-            self.ca_pg._fields( *fields( datum, segment ) )
+        self._data += [
+            self._fields( *fields( datum, segment ) )
             for datum in segment.data
         ]
         
@@ -1027,7 +1042,7 @@ class MPP_Tracking( BiologicProgram ):
         self.v_mpp += self.probe_step
 
 
-# In[2]:
+# In[1]:
 
 
 class MPP( MPP_Tracking ):
@@ -1065,7 +1080,6 @@ class MPP( MPP_Tracking ):
         
         self.voc = None
         self._techniques = [ 'ocv', 'cv', 'ca' ]
-        self.field_titles = []
     
     
     def run( self, data = 'data' ):

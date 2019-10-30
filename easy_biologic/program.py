@@ -321,7 +321,7 @@ class BiologicProgram( ABC ):
                     f.write( ', '.join( map( str, datum ) ) )
                     f.write( '\n' )
                     
-        except Error as err:
+        except Exception as err:
             if self._threaded:
                 logging.warning( '[#save_data] CH{}: {}'.format( self.channel, err ) )
                 
