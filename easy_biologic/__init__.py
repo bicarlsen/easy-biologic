@@ -1,7 +1,7 @@
-from easy_biologic.device import BiologicDevice
-from easy_biologic.program import BiologicProgram
-from easy_biologic.program import ProgramRunner
+from .device import BiologicDevice
+from .program import BiologicProgram
+from .program import ProgramRunner
 
-from easy_biologic import program
-from easy_biologic import base_programs
-from easy_biologic import find_devices
+from . import program
+from . import base_programs
+from . import find_devices
