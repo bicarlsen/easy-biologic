@@ -42,7 +42,7 @@
 # **sync:** Whether to sync the threads or not. If True a threading.sync is 
 # 
 
-# In[1]:
+# In[ ]:
 
 
 import os
@@ -67,114 +67,7 @@ DataSegment = namedtuple( 'DataSegment', [
 CallBack = namedtuple( 'CallBack', [ 'function', 'args', 'kwargs' ] )
 
 
-# In[1]:
-
-
-class ProgramRunner():
-    """
-    Runs programs on multiple channels simultaneously, 
-    each in its own thread.
-    """
-    
-    def __init__( self, programs, sync = False, timeout = 5 ):
-        """
-        Create a Program Runner.
-        
-        :param programs: A list BiologicPrograms to run.
-            If run parameters are required use a dictionary
-            with keys [program, params] where the program value
-            is the program instance to run, and params is a dictionary
-            of parameters to pass to #run of the program.
-        :param sync: Whether threads should be synced or not.
-            Relies on programs using threading.Barrier.
-            [Default: False]
-        :param timeout: Threading timeout in seconds. Used for signal interuptions.
-            [Default: 5]
-        """
-        self.programs = programs
-        self.sync = sync
-        self.timeout = timeout
-        
-        self.__threads = []
-        self._stop_event = threading.Event()
-        
-        if self.sync:
-            self.barrier = threading.Barrier( len( programs ) )
-            for program in programs:
-                prg = ( 
-                    program[ 'program' ] 
-                    if isinstance( program, dict )
-                    else program
-                )
-                
-                prg.barrier = self.barrier
-                
-        # register interupt signal
-        signal.signal(
-            signal.SIGINT,
-            self.stop
-        )
-        
-    
-    @property
-    def threads( self ):
-        """
-        :returns: Current threads.
-        """
-        return self.__threads
-    
-        
-    def start( self ):
-        """
-        Start the programs
-        """
-        self.__threads = []
-        for prg in self.programs:
-            if isinstance( prg, dict ):
-                # run params passed in
-                program = prg[ 'program' ]
-                params  = prg[ 'params' ]
-                
-            else:
-                # only program passed, no run params
-                program = prg
-                params = {}
-            
-            program._stop_event = self._stop_event
-            
-            t = threading.Thread(
-                target = program.run,
-                kwargs = params
-            )
-            
-            self.__threads.append( t )
-            t.start()
-            
-    
-    def wait( self ):
-        """
-        Wait for all threads to finish.
-        """
-        for thread in self.threads:
-            thread.join()
-
-        # TODO: Poll is alive with join timeout to allow signals
-#         is_alive = [ False ]* len( self.threads )
-#         while not all( is_alive ):
-#             for index, thread in enumerate( self.threads ):
-#                 is_alive[ index ] = thread.is_alive()
-#                 thread.join( self.timeout )
-            
-            
-    def stop( self, signal, frame ):
-        """
-        Sets stop event.
-        """
-        logging.warning( "Halting programs..." )
-        self._stop_event.set()
-
-
-# In[1]:
+# In[ ]:
 
 
 class BiologicProgram( ABC ): 
@@ -227,6 +120,7 @@ class BiologicProgram( ABC ):
         self._stop_event = stop_event
         self._cb_data = [] 
 
+        # TODO: signal handling
         # register interupt signal
         if not self._threaded:
             signal.signal(
@@ -461,4 +355,116 @@ class BiologicProgram( ABC ):
             data.append( segment )   
 
         return data
+    
+    
+    def sync( self ):
+        if self.barrier is not None:
+            self.barrier.wait()
+
+
+# In[ ]:
+
+
+class ProgramRunner():
+    """
+    Runs programs on multiple channels simultaneously, 
+    each in its own thread.
+    """
+    
+    def __init__( self, programs, sync = False, timeout = 5 ):
+        """
+        Create a Program Runner.
+        
+        :param programs: A list BiologicPrograms to run.
+            If run parameters are required use a dictionary
+            with keys [program, params] where the program value
+            is the program instance to run, and params is a dictionary
+            of parameters to pass to #run of the program.
+        :param sync: Whether threads should be synced or not.
+            Relies on programs using threading.Barrier.
+            [Default: False]
+        :param timeout: Threading timeout in seconds. Used for signal interuptions.
+            [Default: 5]
+        """
+        self.programs = programs
+        self.sync = sync
+        self.timeout = timeout
+        
+        self.__threads = []
+        self._stop_event = threading.Event()
+        
+        if self.sync:
+            self.barrier = threading.Barrier( len( programs ) )
+            for program in programs:
+                prg = ( 
+                    program[ 'program' ] 
+                    if isinstance( program, dict )
+                    else program
+                )
+                
+                prg.barrier = self.barrier
+                
+        # register interupt signal
+        signal.signal(
+            signal.SIGINT,
+            self.stop
+        )
+        
+    
+    @property
+    def threads( self ):
+        """
+        :returns: Current threads.
+        """
+        return self.__threads
+    
+        
+    def start( self ):
+        """
+        Start the programs
+        """
+        self.__threads = []
+        for prg in self.programs:
+            if isinstance( prg, dict ):
+                # run params passed in
+                program = prg[ 'program' ]
+                params  = prg[ 'params' ]
+                
+            else:
+                # only program passed, no run params
+                program = prg
+                params = {}
+            
+            program._stop_event = self._stop_event
+            
+            t = threading.Thread(
+                target = program.run,
+                kwargs = params
+            )
+            
+            self.__threads.append( t )
+            t.start()
+            
+    
+    def wait( self ):
+        """
+        Wait for all threads to finish.
+        """
+        for thread in self.threads:
+            thread.join()
+
+        # TODO: Poll is alive with join timeout to allow signals
+#         is_alive = [ False ]* len( self.threads )
+#         while not all( is_alive ):
+#             for index, thread in enumerate( self.threads ):
+#                 is_alive[ index ] = thread.is_alive()
+#                 thread.join( self.timeout )
+            
+            
+    def stop( self, signal, frame ):
+        """
+        Sets stop event.
+        """
+        logging.warning( "Halting programs..." )
+        self._stop_event.set()
 
