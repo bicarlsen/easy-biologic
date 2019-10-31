@@ -5,7 +5,7 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name="easy-biologic",
-    version="0.0.3",
+    version="0.0.5",
     author="Brian Carlsen",
     author_email="carlsen.bri@gmail.com",
     description="Controller class for communicating with BioLogic devices.",
@@ -22,7 +22,7 @@ setuptools.setup(
     ],
     install_requires=[],
     package_data={
-        'easy-biologic': [
+        'easy_biologic': [
             'techniques/*'
         ]
     }
