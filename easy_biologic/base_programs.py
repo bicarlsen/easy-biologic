@@ -60,10 +60,10 @@
 # Performs a JV scan.
 # 
 # ### Params
+# **end:** End voltage.
+# 
 # **start:** Start voltage. 
 # [ Defualt: 0 ]
-# 
-# **end:** End voltage.
 # 
 # **step:** Voltage step. 
 # [Default: 0.01]
@@ -78,7 +78,12 @@
 # ## MPP_Tracking
 # Performs MPP tracking.
 # 
+# ### Methods
+# **on_timeout( cb, timeout, repeat = True, args = [], kwargs = {}, timeout_type = 'interval' ):** Registers a function to call after a timeout occurs.
+# 
 # ### Params
+# **run_time:** Run time in seconds.
+# 
 # **init_vmpp:** Initial v_mpp.
 # 
 # **probe_step:** Voltage step for probe. 
@@ -89,32 +94,6 @@
 # 
 # **probe_interval:** How often to probe in seconds. 
 # [Default: 2]
-# 
-# **run_time:** Run time in seconds.
-# 
-# **record_interval:** How often to record a data point in seconds. 
-# [Default: 1]
-# 
-# ## MPP_Tracking_Intermittent
-# Performs MPP tracking with perdiodic voltage holds.
-# 
-# ### Params
-# **init_vmpp:** Initial v_mpp.
-# 
-# **probe_step:** Voltage step for probe. 
-# [Default: 0.01 V]
-# 
-# **probe_points:** Number of data points to collect for probe. 
-# [Default: 5]
-# 
-# **probe_interval:** How often to probe in seconds. 
-# [Default: 2]
-# 
-# **run_time:** Run time in seconds.
-# 
-# **hold_interval:** How often to hold the voltage.
-# 
-# **hold_time:** How long to hold the voltage.
 # 
 # **record_interval:** How often to record a data point in seconds. 
 # [Default: 1]
@@ -124,6 +103,8 @@
 # Runs MPP tracking and finds the initial Vmpp by finding the Voc, then performing a JV scan.
 # 
 # ### Params
+# **run_time:** Run time in seconds.
+# 
 # **probe_step:** Voltage step for probe. 
 # [Default: 0.01 V]
 # 
@@ -133,37 +114,30 @@
 # **probe_interval:** How often to probe in seconds. 
 # [Default: 2]
 # 
-# **run_time:** Run time in seconds.
-# 
 # **record_interval:** How often to record a data point in seconds. 
 # [Default: 1]
 # 
-# ## MPP_Intermittent
-# Runs MPP tracking with voltage holds and finds the initial Vmpp by finding the Voc, then performing a JV scan.
+# ## MPP Cycles
+# Runs multiple MPP cycles, performing Voc and JV scans at the beginning of each.
 # 
 # ### Params
-# **probe_step:** Voltage step for probe. 
-# [Default: 0.01 V]
+# **run_time:** Run time in seconds
 # 
-# **probe_points:** Number of data points to collect for probe. 
-# [Default: 5]
+# **scan_interval:** How often to perform a JV scan.
 # 
-# **probe_interval:** How often to probe in seconds. 
-# [Default: 2]
+# **probe_step:** Voltage step for probe. [Default: 0.01 V]
 # 
-# **run_time:** Run time in seconds.
+# **probe_points:** Number of data points to collect for probe. [Default: 5]
 # 
-# **hold_interval:** How often to hold the voltage.
+# **probe_interval:** How often to probe in seconds. [Default: 2]
 # 
-# **hold_time:** How long to hold the voltage.
-# 
-# **record_interval:** How often to record a data point in seconds. 
-# [Default: 1]
+# **record_interval:** How often to record a data point in seconds. [Default: 1]
 
 # In[ ]:
 
 
 import os
+import math
 import time
 import asyncio
 from collections import namedtuple
@@ -803,7 +777,7 @@ class MPP_Tracking( CALimit ):
         """
         Params are
         init_vmpp: Initial v_mpp.
-        probe_step: Voltage step for probe. [Default: 0.01 V]
+        probe_step: Voltage step for probe. [Default: 0.005 V]
         probe_points: Number of data points to collect for probe. 
             [Default: 5]
         probe_interval: How often to probe in seconds. [Default: 2]
@@ -813,7 +787,7 @@ class MPP_Tracking( CALimit ):
         """
         # set up params
         defaults = {
-            'probe_step':      0.01,
+            'probe_step':      5e-3,
             'probe_points':    5,
             'probe_interval':  2,
             'record_interval': 1
@@ -1042,7 +1016,7 @@ class MPP_Tracking( CALimit ):
         self.v_mpp += self.probe_step
 
 
-# In[1]:
+# In[ ]:
 
 
 class MPP( MPP_Tracking ):
@@ -1060,11 +1034,11 @@ class MPP( MPP_Tracking ):
     ):
         """
         Params are
-        probe_step: Voltage step for probe. [Default: 0.01 V]
+        run_time: Run time in seconds.
+        probe_step: Voltage step for probe. [Default: 0.005 V]
         probe_points: Number of data points to collect for probe. 
             [Default: 5]
         probe_interval: How often to probe in seconds. [Default: 2]
-        run_time: Run time in seconds.
         record_interval: How often to record a data point in seconds.
             [Default: 1]
         """
@@ -1108,9 +1082,8 @@ class MPP( MPP_Tracking ):
         self.v_mpp = self.__run_jv( self.voc, jv_file ) # jv 
         self.params[ 'init_vmpp' ] = self.v_mpp
         
-        if self.barrier is not None:
-            self.barrier.wait()
-            print( 'Beginning MPP tracking on channel {}...'.format( self.channel ) )
+        self.sync()
+        print( 'Beginning MPP tracking on channel {}...'.format( self.channel ) )
             
         super().run( mpp_file ) # mpp tracking
         
@@ -1125,10 +1098,19 @@ class MPP( MPP_Tracking ):
             'Cycle' 
         ]
         
-        with open( file, 'w' ) as f:
-            # write header only if not appending
-            f.write( ', '.join( ca_titles ) )
-            f.write( '\n' )
+        try:
+            with open( file, 'w' ) as f:
+                # write header only if not appending
+                f.write( ', '.join( ca_titles ) )
+                f.write( '\n' )
+                
+        except Exception as err:
+            if self._threaded:
+                logging.warning( '[#save_data] CH{}: {}'.format( self.channel, err ) )
+                
+            else:
+                raise err
+                
             
             
     def __run_ocv( self, file ):
@@ -1194,4 +1176,78 @@ class MPP( MPP_Tracking ):
         mpp = min( prg.data, key = lambda d: d.power ) # power of interest is negative
         v_mpp = mpp.voltage
         return v_mpp
+
+
+# In[ ]:
+
+
+class MPP_Cycles( MPP ):
+    """
+    MPP tracking with periodic JV scans.
+    """
+    
+    def __init__( 
+        self, 
+        device, 
+        channel, 
+        params, 
+        autoconnect = True,
+        barrier = None,
+        threaded = False
+    ):
+        """
+        Params are
+        run_time: Run time in seconds
+        scan_interval: How often to perform a JV scan.
+        probe_step: Voltage step for probe. [Default: 0.01 V]
+        probe_points: Number of data points to collect for probe. 
+            [Default: 5]
+        probe_interval: How often to probe in seconds. [Default: 2]
+        record_interval: How often to record a data point in seconds.
+            [Default: 1]
+        """
+        # set up params to match MPP
+        params[ 'total_run_time' ] = params[ 'run_time' ]
+        params[ 'run_time' ] = params[ 'scan_interval' ]
+        
+        super().__init__( 
+            device, 
+            channel, 
+            params, 
+            autoconnect = autoconnect, 
+            barrier = barrier,
+            threaded = threaded
+        )
+       
+    
+    def run( self, data = 'data' ):
+        """
+        :param data: Data folder path. [Default: 'data']
+        """
+        remainder, cycles = math.modf( 
+            self.params[ 'total_run_time' ]/ self.params[ 'run_time' ]
+        )
+        
+        cycle = 0
+        while cycle < cycles:
+            self._run_mpp_cycle( cycle, data )
+            cycle += 1
+            
+        if remainder > 0:
+            # last cycle, run remainder
+            self.params[ 'run_time' ] *= remainder 
+            self._run_mpp_cycle( cycle, data )
+    
+    
+    
+    def _run_mpp_cycle( self, cycle, folder ):
+        folder = os.path.join( folder, 'cycle-{:02.0f}'.format( cycle ) )
+        self._data = []
+
+        if self.barrier is not None:
+            self.barrier.wait()
+
+        print( 'Starting cycle {} on channel {}.'.format( cycle, self.channel ) )
+        super().run( folder )
+        
 
