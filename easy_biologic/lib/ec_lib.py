@@ -41,13 +41,53 @@
 # **get_values( idn, ch ):** Gets the current values and states of the given device channel.
 # 
 # **raise_exception( err ):** Raises an exception based on a calls error code. 
+# 
+# #### Enum Classes
+# **IRange:** Current ranges. <br>
+# Values: [ p100, n1, n10, n100, u1, u10, u100, m1, m10, m100, a1, KEEP, BOOSTER, AUTO ]
+# 
+# **ERange:** Voltage ranges. <br>
+# Values: [ v2_5, v5, v10, AUTO ]
+# 
+# **ConnectionType:** Whether the device is floating or grounded. <br>
+# Values: [ GROUNDED, FLOATING ]
+# 
+# **TechniqueId:** ID of the technique. (Not fully implemented.) <br>
+# Values: [ NONE, OCV, CA, CP, CV, PEIS, CALIMIT ]
+# 
+# **ChannelState:** State of the channel. <br>
+# Values: [ STOP, RUN, PAUSE ]
+# 
+# **ParameterType:** Type of a parameter. <br>
+# Values: [ INT32, BOOLEAN, SINGLE, FLOAT ]
+# (FLOAT is an alias of SINGLE.)
+# 
+# #### Structures
+# **DeviceInfo:** Information representing the device. Used by `connect()`. <br>
+# Fields: [ DeviceCode, RAMSize, CPU, NumberOfChannles, NumberOfSlots, FirmwareVersion, FirmwareDate_yyyy, FirmwareDate_mm, FirmwareDate_dd, HTdisplayOn, NbOfConnectedPC ]
+# 
+# **ChannelInfo:** Information representing a device channel. Used by `channel_info()`. <br>
+# Fields: [ Channel, BoardVersion, BoardSerialNumber, FirmwareVersion, XilinxVersion, AmpCode, NbAmps, Lcboard, Zboard, RESERVED, MemSize, State, MaxIRange, MinIRange, MaxBandwidth, NbOfTechniques ]
+# 
+# **EccParam:** A technique parameter. <br>
+# Fields: [ ParamStr, ParamType, ParamVal, ParamIndex ]
+# 
+# **EccParams:** A bundle of technique parameters. <br>
+# Fields: [ len, pParams ]
+# 
+# **CurrentValues:** Values measured from and states of the device. <br>
+# Fields: [ State, MemFilled, TimeBase, Ewe, EweRangeMin, EweRangeMax, Ece, EceRangeMin, EceRangeMax, Eoverflow, I, IRange, Ioverflow, ElapsedTime, Freq, Rcomp, Saturation, OptErr, OptPos ]
+# 
+# **DataInfo:** Metadata of measured data. <br>
+# Fields: [ IRQskipped, NbRows, NbCols, TechniqueIndex, TechniqueID, processIndex, loop, StartTime, MuxPad ]
 
-# In[2]:
+# In[1]:
 
 
 # standard imports
 import logging
 import os
+import asyncio
 import ctypes as c
 import platform
 import pkg_resources
@@ -58,7 +98,7 @@ from .ec_errors import EcError
 
 # ## Constants
 
-# In[8]:
+# In[ ]:
 
 
 class IRange( Enum ):
@@ -131,11 +171,12 @@ class ParameterType( Enum ):
     INT32    = 0
     BOOLEAN  = 1
     SINGLE   = 2
+    FLOAT    = 2
 
 
 # ## Structs
 
-# In[26]:
+# In[ ]:
 
 
 # Device Info Structure
@@ -253,7 +294,7 @@ class DataInfo( c.Structure ):
 
 # ## DLL Methods
 
-# In[ ]:
+# In[7]:
 
 
 #--- init ---
@@ -335,212 +376,44 @@ BL_ConvertNumericIntoSingle = __dll[ 'BL_ConvertNumericIntoSingle' ]
 BL_ConvertNumericIntoSingle.restype = c.c_int32
 
 
+# In[5]:
+
+
+# async methods
+methods = [
+    BL_Connect,
+    BL_Disconnect,
+    BL_TestConnection,
+    BL_LoadFirmware,
+    BL_IsChannelPlugged,
+    BL_GetChannelsPlugged,
+    BL_GetChannelInfos,
+    
+    # technique functions
+    BL_LoadTechnique,
+    BL_UpdateParameters ,
+    BL_StartChannel,
+    BL_StartChannels,
+    BL_StopChannel,
+    BL_StopChannels,
+    
+    # data functions
+    BL_GetCurrentValues,
+    BL_GetData
+]
+
+for method in methods:
+    async_name = method.__name__ + '_async'
+    globals()[ async_name ] = asyncio.coroutine( method )
+
+
 # ## Methods
 
-# In[28]:
+# ### No Communication
+
+# In[ ]:
 
 
-def connect( address, timeout = 5 ):
-    """
-    Connect to the device at the given address.
-    
-    :param address: Address of the device.
-    :param timout: Timout in seconds. [Default: 5]
-    :returns: A tuple of ( id, info ), where id is the connection id, 
-        and info is a DeviceInfo structure.
-    """
-    address = c.create_string_buffer( address.encode( 'utf-8' ) )
-    timeout = c.c_uint8( timeout )
-    idn     = c.c_int32()
-    info    = DeviceInfo()
-    
-    validate( BL_Connect(
-        c.byref( address ),
-        timeout,
-        c.byref( idn ),
-        c.byref( info )
-    ) )
-    
-    return ( idn.value, info )
-
-
-def disconnect( idn ):
-    """
-    Disconnect from the given device.
-    
-    :param address: The address of the device.
-    """
-    idn = c.c_int32( idn )
-    
-    validate(
-        BL_Disconnect( idn )
-    )
-    
-    
-def is_connected( idn ):
-    """
-    Returns whether the given device is connected or not.
-    
-    :param idn: The device id.
-    :returns: Boolean of the connection state, or the error code.
-    """
-    idn = c.c_int32( idn )
-    
-    try:
-        validate( 
-            BL_TestConnection( idn )
-        )
-        
-    except:
-        return False
-    
-    return True
-    
-
-def init_channels( idn, chs, force_reload = False, bin_file = None, xlx_file = None ):
-    """
-    Initializes a channel by loading its firmware.
-    
-    :param idn: Device identifier.
-    :param chs: List of channels to initialize.
-    :param force_reload: Boolean indicating whether to force a firmware reload each time.
-        [Default: False]
-    :param bin: bin file containing, or None to use default.
-        [Default: None]
-    :param xlx_file: xilinx file, or None to use default.
-        [Default: None]
-    """
-    length = max( chs ) + 1
-    results = ( c.c_int32* length )()
-    active = create_active_array(  chs, length )
-    idn = c.c_int32( idn )
-    show_gauge = c.c_bool( False )
-    
-    bin_file = (
-        c.c_void_p() 
-        if ( bin_file is None ) 
-        else c.byref( 
-            c.create_string_buffer( 
-                bin_file.encode( 'utf-8' ) 
-            ) 
-        )
-    )
-    
-    xlx_file = (
-        c.c_void_p() 
-        if ( xlx_file is None ) 
-        else c.byref( 
-            c.create_string_buffer( 
-                xlx_file.encode( 'utf-8' )
-            ) 
-        )
-    )
-    
-    validate(
-        BL_LoadFirmware(
-            idn, 
-            c.byref( active ), 
-            c.byref( results ), 
-            length, 
-            show_gauge,
-            force_reload, 
-            bin_file, 
-            xlx_file
-        )
-    )
-
-    
-def is_channel_connected( idn, ch ):
-    idn = c.c_int32( idn )
-    ch = c.c_uint8( ch )
-    
-    conn = BL_IsChannelPlugged( idn, ch )
-    
-    return conn.value
-    
-
-def get_channels( idn, size = 16 ):
-    """
-    Returns the plugged state of channels.
-    
-    :param idn: The device id.
-    :param size: The number of channels. [Default: 16]
-    :return: A list of booleans indicating the plugged state of the channel.
-    """
-    idn = c.c_int32( idn )
-    channels = ( c.c_uint8* size )()
-    size = c.c_int32( size )
-    
-    validate(
-        BL_GetChannelsPlugged(
-            idn, c.byref( channels ), size
-        )
-    )
-    
-    return [ ( ch == 1 ) for ch in channels ]
-
-
-def channel_info( idn, ch ):
-    """
-    Returns information on the specified channel.
-    
-    :param idn: The device id.
-    :param ch: The channel.
-    :returns: ChannelInfo structure.
-    """
-    idn  = c.c_int32( idn )
-    ch   = c.c_uint8( ch )
-    info = ChannelInfo()
-    
-    validate( 
-        BL_GetChannelInfos(
-            idn, ch, c.byref( info )
-        )
-    )
-    
-    return info
-
-
-def load_technique( 
-    idn, 
-    ch, 
-    technique, 
-    params, 
-    first = True, 
-    last  = True,
-    device  = None,
-    verbose = False
-):
-    """
-    Loads a technique onto a specified device channel.
-    
-    :param idn: Device id.
-    :param ch: Channel.
-    :param technique: Name of the technique file.
-    :param params: EccParams structure for the technique.
-    :param first: True if the technique is loaded first. [Defualt: True]
-    :param last: True if this is the last technique. [Default: True]
-    :param device: Type of device. Used to modify technique. 
-        [Default: None]
-    :param verbose: Echoes the sent parameters for debugging. [Default: False]
-    """
-    idn = c.c_int32( idn )
-    ch  = c.c_uint8( ch )
- 
-    technique_path = technique_file( technique, device )
-    technique = c.create_string_buffer( technique_path.encode( 'utf-8' ) )
-    
-    first = c.c_bool( first )
-    last  = c.c_bool( last )
-    verbose = c.c_bool( verbose )
-    
-    validate(
-        BL_LoadTechnique( 
-            idn, ch, c.byref( technique ), params, first, last, verbose 
-        )
-    )
-    
-    
 def create_parameter( name, value, index = 0, kind = None ):
     """
     Factory to create an EccParam structure.
@@ -652,35 +525,8 @@ def create_parameters( params, index = 0, types = None ):
     params.pParams = c.cast( param_list, c.POINTER( EccParam ) )
     
     return params
-    
 
-def update_parameters( idn, ch, technique, params, index = 0, device = None ):
-    """
-    Updates the parameters of a technique.
-    
-    :param idn: Device identifier.
-    :param ch: Channel number.
-    :param technique: Name of the technique file.
-    :param params: EccParams struct of new parameters.
-    :param index: Index of the technique. [Default: 0]
-    :param device: Type of device. Used to modify technique. 
-        [Default: None]
-    """
-    
-    idn = c.c_int32( idn )
-    ch  = c.c_uint8( ch )
-    
-    technique = technique_file( technique, device )
-    technique = c.create_string_buffer( technique.encode( 'utf-8' ) )
-    index = c.c_int32( index )
-    
-    validate(
-        BL_UpdateParameters(
-            idn, ch, index, params, c.byref( technique )
-        )
-    )
-    
-    
+
 def cast_parameters( parameters, types):
     """
     Cast parameters to given types.
@@ -727,7 +573,257 @@ def cast_parameters( parameters, types):
         raise TypeError( 'Invalid types provided.')
          
     return cast
-            
+
+
+def convert_numeric( num ):
+    """
+    Converts a numeric value into a single (float).
+    
+    :param num: Numeric value to convert.
+    :returns: Value of numeric as a float.
+    """
+    num = c.c_uint32( num )
+    val = c.c_float()
+    
+    validate( 
+        BL_ConvertNumericIntoSingle( 
+            num, c.byref( val ) 
+        )
+    )
+    
+    return val.value
+
+
+# ### Synchronous
+
+# In[ ]:
+
+
+def connect( address, timeout = 5 ):
+    """
+    Connect to the device at the given address.
+    
+    :param address: Address of the device.
+    :param timout: Timout in seconds. [Default: 5]
+    :returns: A tuple of ( id, info ), where id is the connection id, 
+        and info is a DeviceInfo structure.
+    """
+    address = c.create_string_buffer( address.encode( 'utf-8' ) )
+    timeout = c.c_uint8( timeout )
+    idn     = c.c_int32()
+    info    = DeviceInfo()
+    
+    err = BL_Connect(
+        c.byref( address ),
+        timeout,
+        c.byref( idn ),
+        c.byref( info )
+    )
+    
+    validate( err )
+    return ( idn.value, info )
+
+
+def disconnect( idn ):
+    """
+    Disconnect from the given device.
+    
+    :param address: The address of the device.
+    """
+    idn = c.c_int32( idn )
+    
+    err = BL_Disconnect( idn )
+    
+    validate( err )
+    
+    
+def is_connected( idn ):
+    """
+    Returns whether the given device is connected or not.
+    
+    :param idn: The device id.
+    :returns: Boolean of the connection state, or the error code.
+    """
+    idn = c.c_int32( idn )
+    
+    try:
+        validate( 
+            BL_TestConnection( idn )
+        )
+        
+    except:
+        return False
+    
+    return True
+    
+
+def init_channels( idn, chs, force_reload = False, bin_file = None, xlx_file = None ):
+    """
+    Initializes a channel by loading its firmware.
+    
+    :param idn: Device identifier.
+    :param chs: List of channels to initialize.
+    :param force_reload: Boolean indicating whether to force a firmware reload each time.
+        [Default: False]
+    :param bin: bin file containing, or None to use default.
+        [Default: None]
+    :param xlx_file: xilinx file, or None to use default.
+        [Default: None]
+    """
+    length = max( chs ) + 1
+    results = ( c.c_int32* length )()
+    active = create_active_array(  chs, length )
+    idn = c.c_int32( idn )
+    show_gauge = c.c_bool( False )
+    
+    bin_file = (
+        c.c_void_p() 
+        if ( bin_file is None ) 
+        else c.byref( 
+            c.create_string_buffer( 
+                bin_file.encode( 'utf-8' ) 
+            ) 
+        )
+    )
+    
+    xlx_file = (
+        c.c_void_p() 
+        if ( xlx_file is None ) 
+        else c.byref( 
+            c.create_string_buffer( 
+                xlx_file.encode( 'utf-8' )
+            ) 
+        )
+    )
+    
+    err = BL_LoadFirmware(
+            idn, 
+            c.byref( active ), 
+            c.byref( results ), 
+            length, 
+            show_gauge,
+            force_reload, 
+            bin_file, 
+            xlx_file
+        )
+    
+    validate( err )
+
+    
+def is_channel_connected( idn, ch ):
+    idn = c.c_int32( idn )
+    ch = c.c_uint8( ch )
+    
+    conn = BL_IsChannelPlugged( idn, ch )
+    
+    return conn.value
+    
+
+def get_channels( idn, size = 16 ):
+    """
+    Returns the plugged state of channels.
+    
+    :param idn: The device id.
+    :param size: The number of channels. [Default: 16]
+    :return: A list of booleans indicating the plugged state of the channel.
+    """
+    idn = c.c_int32( idn )
+    channels = ( c.c_uint8* size )()
+    size = c.c_int32( size )
+    
+    err = BL_GetChannelsPlugged(
+        idn, c.byref( channels ), size
+    )
+    
+    validate( err )
+    return [ ( ch == 1 ) for ch in channels ]
+
+
+def channel_info( idn, ch ):
+    """
+    Returns information on the specified channel.
+    
+    :param idn: The device id.
+    :param ch: The channel.
+    :returns: ChannelInfo structure.
+    """
+    idn  = c.c_int32( idn )
+    ch   = c.c_uint8( ch )
+    info = ChannelInfo()
+    
+    err = BL_GetChannelInfos(
+        idn, ch, c.byref( info )
+    )
+    
+    validate( err )
+    return info
+
+
+def load_technique( 
+    idn, 
+    ch, 
+    technique, 
+    params, 
+    first = True, 
+    last  = True,
+    device  = None,
+    verbose = False
+):
+    """
+    Loads a technique onto a specified device channel.
+    
+    :param idn: Device id.
+    :param ch: Channel.
+    :param technique: Name of the technique file.
+    :param params: EccParams structure for the technique.
+    :param first: True if the technique is loaded first. [Defualt: True]
+    :param last: True if this is the last technique. [Default: True]
+    :param device: Type of device. Used to modify technique. 
+        [Default: None]
+    :param verbose: Echoes the sent parameters for debugging. [Default: False]
+    """
+    idn = c.c_int32( idn )
+    ch  = c.c_uint8( ch )
+ 
+    technique_path = technique_file( technique, device )
+    technique = c.create_string_buffer( technique_path.encode( 'utf-8' ) )
+    
+    first = c.c_bool( first )
+    last  = c.c_bool( last )
+    verbose = c.c_bool( verbose )
+    
+    err = BL_LoadTechnique( 
+        idn, ch, c.byref( technique ), params, first, last, verbose 
+    )
+    
+    validate( err )
+    
+
+def update_parameters( idn, ch, technique, params, index = 0, device = None ):
+    """
+    Updates the parameters of a technique.
+    
+    :param idn: Device identifier.
+    :param ch: Channel number.
+    :param technique: Name of the technique file.
+    :param params: EccParams struct of new parameters.
+    :param index: Index of the technique. [Default: 0]
+    :param device: Type of device. Used to modify technique. 
+        [Default: None]
+    """
+    
+    idn = c.c_int32( idn )
+    ch  = c.c_uint8( ch )
+    
+    technique = technique_file( technique, device )
+    technique = c.create_string_buffer( technique.encode( 'utf-8' ) )
+    index = c.c_int32( index )
+    
+    err = BL_UpdateParameters(
+        idn, ch, index, params, c.byref( technique )
+    )
+    
+    validate( err )
     
     
 def start_channel( idn, ch ):
@@ -740,11 +836,11 @@ def start_channel( idn, ch ):
     idn = c.c_int32( idn )
     ch  = c.c_uint8( ch )
     
-    validate(
-        BL_StartChannel( 
-            idn, ch 
-        )
+    err = BL_StartChannel( 
+        idn, ch 
     )
+    
+    validate( err )
 
 
 def start_channels( idn, chs ):
@@ -759,13 +855,11 @@ def start_channels( idn, chs ):
     active = create_active_array( chs, num_chs )
     idn = c.c_int32( idn )
     
-    err = validate(
-        BL_StartChannel( 
-            idn, c.byref( active ), c.byref( results ), num_chs
-        )
+    err = BL_StartChannel( 
+        idn, c.byref( active ), c.byref( results ), num_chs
     )
     
-    return err
+    validate( err )
 
 
 def stop_channel( idn, ch ):
@@ -778,13 +872,11 @@ def stop_channel( idn, ch ):
     idn = c.c_int32( idn )
     ch  = c.c_uint8( ch )
     
-    err = validate(
-        BL_StopChannel( 
-            idn, ch 
-        )
+    err = BL_StopChannel( 
+        idn, ch 
     )
     
-    return err
+    validate( err )
 
 
 def stop_channels( idn, chs ):
@@ -799,13 +891,11 @@ def stop_channels( idn, chs ):
     active = create_active_array( chs, num_chs )
     idn = c.c_int32( idn )
     
-    validate(
-        BL_StopChannel( 
-            idn, c.byref( active ), c.byref( results ), num_chs
-        )
+    err = BL_StopChannel( 
+        idn, c.byref( active ), c.byref( results ), num_chs
     )
     
-    return err
+    validate( err )
 
 
 def get_values( idn, ch ):
@@ -820,12 +910,11 @@ def get_values( idn, ch ):
     ch  = c.c_uint8( ch )
     values = CurrentValues()
 
-    validate(
-        BL_GetCurrentValues(
-            idn, ch, c.byref( values )
-        )
+    err = BL_GetCurrentValues(
+        idn, ch, c.byref( values )
     )
-
+    
+    validate( err )
     return values
     
     
@@ -846,35 +935,366 @@ def get_data( idn, ch ):
     info = DataInfo()
     values = CurrentValues()
         
-    validate(
-        BL_GetData(
-            idn, ch, c.byref( data ), c.byref( info ), c.byref( values )
-        )
+    err = BL_GetData(
+        idn, ch, c.byref( data ), c.byref( info ), c.byref( values )
     )
-
+    
+    validate( err )
     return ( data, info, values )
-    
-    
-def convert_numeric( num ):
+
+
+# ### Asynchronous
+
+# In[ ]:
+
+
+async def connect_async( address, timeout = 5 ):
     """
-    Converts a numeric value into a single (float).
+    Connect to the device at the given address.
     
-    :param num: Numeric value to convert.
-    :returns: Value of numeric as a float.
+    :param address: Address of the device.
+    :param timout: Timout in seconds. [Default: 5]
+    :returns: A tuple of ( id, info ), where id is the connection id, 
+        and info is a DeviceInfo structure.
     """
-    num = c.c_uint32( num )
-    val = c.c_float()
+    address = c.create_string_buffer( address.encode( 'utf-8' ) )
+    timeout = c.c_uint8( timeout )
+    idn     = c.c_int32()
+    info    = DeviceInfo()
     
-    validate( 
-        BL_ConvertNumericIntoSingle( 
-            num, c.byref( val ) 
+    err = await BL_Connect_async(
+        c.byref( address ),
+        timeout,
+        c.byref( idn ),
+        c.byref( info )
+    )
+    
+    validate( err )
+    return ( idn.value, info )
+
+
+async def disconnect_async( idn ):
+    """
+    Disconnect from the given device.
+    
+    :param address: The address of the device.
+    """
+    idn = c.c_int32( idn )
+    
+    err = await BL_Disconnect_async( idn )
+    
+    validate( err )
+    
+    
+async def is_connected_async( idn ):
+    """
+    Returns whether the given device is connected or not.
+    
+    :param idn: The device id.
+    :returns: Boolean of the connection state, or the error code.
+    """
+    idn = c.c_int32( idn )
+    
+    try:
+        validate( 
+            await BL_TestConnection_async( idn )
+        )
+        
+    except:
+        return False
+    
+    return True
+    
+
+async def init_channels_async( idn, chs, force_reload = False, bin_file = None, xlx_file = None ):
+    """
+    Initializes a channel by loading its firmware.
+    
+    :param idn: Device identifier.
+    :param chs: List of channels to initialize.
+    :param force_reload: Boolean indicating whether to force a firmware reload each time.
+        [Default: False]
+    :param bin: bin file containing, or None to use default.
+        [Default: None]
+    :param xlx_file: xilinx file, or None to use default.
+        [Default: None]
+    """
+    length = max( chs ) + 1
+    results = ( c.c_int32* length )()
+    active = create_active_array(  chs, length )
+    idn = c.c_int32( idn )
+    show_gauge = c.c_bool( False )
+    
+    bin_file = (
+        c.c_void_p() 
+        if ( bin_file is None ) 
+        else c.byref( 
+            c.create_string_buffer( 
+                bin_file.encode( 'utf-8' ) 
+            ) 
         )
     )
     
-    return val.value
+    xlx_file = (
+        c.c_void_p() 
+        if ( xlx_file is None ) 
+        else c.byref( 
+            c.create_string_buffer( 
+                xlx_file.encode( 'utf-8' )
+            ) 
+        )
+    )
+    
+    err = await BL_LoadFirmware_async(
+            idn, 
+            c.byref( active ), 
+            c.byref( results ), 
+            length, 
+            show_gauge,
+            force_reload, 
+            bin_file, 
+            xlx_file
+        )
+    
+    validate( err )
+
+    
+async def is_channel_connected_async( idn, ch ):
+    idn = c.c_int32( idn )
+    ch = c.c_uint8( ch )
+    
+    conn = await BL_IsChannelPlugged_async( idn, ch )
+    
+    return conn.value
+    
+
+async def get_channels_async( idn, size = 16 ):
+    """
+    Returns the plugged state of channels.
+    
+    :param idn: The device id.
+    :param size: The number of channels. [Default: 16]
+    :return: A list of booleans indicating the plugged state of the channel.
+    """
+    idn = c.c_int32( idn )
+    channels = ( c.c_uint8* size )()
+    size = c.c_int32( size )
+    
+    err = await BL_GetChannelsPlugged_async(
+        idn, c.byref( channels ), size
+    )
+    
+    validate( err )
+    return [ ( ch == 1 ) for ch in channels ]
 
 
-#--- helper functions ---
+async def channel_info_async( idn, ch ):
+    """
+    Returns information on the specified channel.
+    
+    :param idn: The device id.
+    :param ch: The channel.
+    :returns: ChannelInfo structure.
+    """
+    idn  = c.c_int32( idn )
+    ch   = c.c_uint8( ch )
+    info = ChannelInfo()
+    
+    err = await BL_GetChannelInfos_async(
+        idn, ch, c.byref( info )
+    )
+    
+    validate( err )
+    return info
+
+
+async def load_technique_async( 
+    idn, 
+    ch, 
+    technique, 
+    params, 
+    first = True, 
+    last  = True,
+    device  = None,
+    verbose = False
+):
+    """
+    Loads a technique onto a specified device channel.
+    
+    :param idn: Device id.
+    :param ch: Channel.
+    :param technique: Name of the technique file.
+    :param params: EccParams structure for the technique.
+    :param first: True if the technique is loaded first. [Defualt: True]
+    :param last: True if this is the last technique. [Default: True]
+    :param device: Type of device. Used to modify technique. 
+        [Default: None]
+    :param verbose: Echoes the sent parameters for debugging. [Default: False]
+    """
+    idn = c.c_int32( idn )
+    ch  = c.c_uint8( ch )
+ 
+    technique_path = technique_file( technique, device )
+    technique = c.create_string_buffer( technique_path.encode( 'utf-8' ) )
+    
+    first = c.c_bool( first )
+    last  = c.c_bool( last )
+    verbose = c.c_bool( verbose )
+    
+    err = await BL_LoadTechnique_async( 
+        idn, ch, c.byref( technique ), params, first, last, verbose 
+    )
+    
+    validate( err )
+    
+
+async def update_parameters_async( idn, ch, technique, params, index = 0, device = None ):
+    """
+    Updates the parameters of a technique.
+    
+    :param idn: Device identifier.
+    :param ch: Channel number.
+    :param technique: Name of the technique file.
+    :param params: EccParams struct of new parameters.
+    :param index: Index of the technique. [Default: 0]
+    :param device: Type of device. Used to modify technique. 
+        [Default: None]
+    """
+    
+    idn = c.c_int32( idn )
+    ch  = c.c_uint8( ch )
+    
+    technique = technique_file( technique, device )
+    technique = c.create_string_buffer( technique.encode( 'utf-8' ) )
+    index = c.c_int32( index )
+    
+    err = await BL_UpdateParameters_async(
+        idn, ch, index, params, c.byref( technique )
+    )
+    
+    validate( err )
+    
+    
+async def start_channel_async( idn, ch ):
+    """
+    Starts techniques loaded on a channel.
+    
+    :param idn: Device identifier.
+    :param ch: Channel to start.
+    """
+    idn = c.c_int32( idn )
+    ch  = c.c_uint8( ch )
+    
+    err = await BL_StartChannel_async( 
+        idn, ch 
+    )
+    
+    validate( err )
+
+
+async def start_channels_async( idn, chs ):
+    """
+    Starts techniques loaded on the given channels.
+    
+    :param idn: Device identifier.
+    :param chs: List of channels to start.
+    """
+    num_chs = max( chs ) + 1
+    results = ( c.c_int32* num_chs )()
+    active = create_active_array( chs, num_chs )
+    idn = c.c_int32( idn )
+    
+    err = await BL_StartChannel_async( 
+        idn, c.byref( active ), c.byref( results ), num_chs
+    )
+    
+    validate( err )
+
+
+async def stop_channel_async( idn, ch ):
+    """
+    Stops techniques loaded on a channel.
+    
+    :param idn: Device identifier.
+    :param ch: Channel to stop.
+    """
+    idn = c.c_int32( idn )
+    ch  = c.c_uint8( ch )
+    
+    err = await BL_StopChannel_async( 
+        idn, ch 
+    )
+    
+    validate( err )
+
+
+async def stop_channels_async( idn, chs ):
+    """
+    Stops techniques loaded on the given channels.
+    
+    :param idn: Device identifier.
+    :param chs: List of channels to stop.
+    """
+    num_chs = max( chs ) + 1
+    results = ( c.c_int32* num_chs )()
+    active = create_active_array( chs, num_chs )
+    idn = c.c_int32( idn )
+    
+    err = await BL_StopChannel_async( 
+        idn, c.byref( active ), c.byref( results ), num_chs
+    )
+    
+    validate( err )
+
+
+async def get_values_async( idn, ch ):
+    """
+    Gets the current data values on the given device channel.
+
+    :param idn: Device identifier.
+    :param ch: Channel.
+    :returns: CurrentValues object.
+    """
+    idn = c.c_int32( idn )
+    ch  = c.c_uint8( ch )
+    values = CurrentValues()
+
+    err = await BL_GetCurrentValues_async(
+        idn, ch, c.byref( values )
+    )
+    
+    validate( err )
+    return values
+    
+    
+async def get_data_async( idn, ch ):
+    """
+    Gets data from the given device channel.
+    
+    :param idn: Device identifier.
+    :param ch: Channel.
+    :returns: A tuple of ( data, data_info, current_values ) where
+        data_info is a DataInfo object representing the data's metadata, 
+        data is a data array, and 
+        current_values is a CurrentValues object.
+    """
+    idn  = c.c_int32( idn )
+    ch   = c.c_uint8( ch )
+    data = ( c.c_uint32* 1000 )()
+    info = DataInfo()
+    values = CurrentValues()
+        
+    err = await BL_GetData_async(
+        idn, ch, c.byref( data ), c.byref( info ), c.byref( values )
+    )
+    
+    validate( err )
+    return ( data, info, values )
+
+
+# ## Helper Functions
+
+# In[ ]:
 
 
 def validate( err ):
