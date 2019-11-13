@@ -297,19 +297,71 @@ class CallBack_Timeout:
 
 
 #--- helper function ---
-def set_defaults( params, defaults ):
+def set_defaults( params, defaults, channels ):
     """
     Combines parameter and default dictionaries.
     
-    :param params: Parameter dictionary.
+    :param params: Parameter or channel parameter dictionary.
     :param defaults: Default dictionary. 
         Values used if key is not present in parameter dictionary.
+    :param channels: List of channels or None if params is keyed by channel.
     :returns: Dictionary with defualt values set, if not set in parameters dictionary.
     """
-    return { **defaults, **params }
+    if channels is None:
+        # parameters by channel
+        for ch, ch_params in params.items():
+            params[ ch ] = { **defaults, **ch_params }
+            
+    else:
+         params = { **defaults, **params }
+            
+    return params
 
 
-# In[ ]:
+def map_params( key_map, params, by_channel = True, keep = False, inplace = False ):
+    """
+    Returns a dictionary with names mapped.
+    
+    :param key_map: Dictionary keyed by original keys with new keys as values.
+    :param params: Dictionary of parameters.
+    :param by_channel: Whether params is by channel, or only parameters.
+        [Default: True]
+    :param keep: True to keep original name, False to remove it.
+        [Default: False]
+    :param inplace: Transform original params dictionary, or create a new one.
+        [Default: False]
+    :returns: Dictionary with mapped keys.
+    """
+    def map_ch_params( ch_params ):
+        """
+        Maps channel parameters inplace.
+        
+        :param ch_params: Parameter dictionary.
+        :returns: Modified parameter dictionary.
+        """
+        for o_key, n_key in key_map.items():
+            ch_params[ n_key ] = ch_params[ o_key ]
+
+        if not keep:
+            # remove original keys
+            for o_key in key_map:
+                del ch_params[ o_key ]
+            
+    
+    if not inplace:
+        params = params.copy()
+    
+    if by_channel:
+        for ch, ch_params in params.items():
+            map_ch_params( ch_params )
+            
+    else:
+        map_ch_params( params )
+    
+    return params
+
+
+# In[1]:
 
 
 class OCV( BiologicProgram ):
@@ -320,11 +372,11 @@ class OCV( BiologicProgram ):
     def __init__( 
         self, 
         device, 
-        channel,
-        params, 
+        params,
+        channels    = None,
         autoconnect = True,
-        barrier = None,
-        threaded = False
+        barrier     = None,
+        threaded    = False
     ):
         """
         Params are
@@ -337,15 +389,15 @@ class OCV( BiologicProgram ):
             'time_interval': 1,
             'voltage_interval': 0.01
         }
-        params = set_defaults( params, defaults )
+        params = set_defaults( params, defaults, channels )
         
         super().__init__( 
             device, 
-            channel, 
             params, 
+            channels    = channels, 
             autoconnect = autoconnect, 
-            barrier = barrier,
-            threaded = threaded
+            barrier     = barrier,
+            threaded    = threaded
         )
         
         self._techniques = [ 'ocv' ]
@@ -364,11 +416,13 @@ class OCV( BiologicProgram ):
         :param retrieve_data: Automatically retrieve and disconenct form device.
             [Default: True]
         """
-        params = {
-            'Rest_time_T':     self.params[ 'time' ],
-            'Record_every_dE': self.params[ 'voltage_interval' ],
-            'Record_every_dT': self.params[ 'time_interval' ]
+        # map to ocv params
+        key_map = {
+            'time': 'Rest_time_T',
+            'voltage_interval': 'Record_every_dE',
+            'time_interval':    'Record_every_dT'
         }
+        params = map_params( key_map, self.params )
             
         fields = None 
         if retrieve_data:
@@ -398,11 +452,11 @@ class CA( BiologicProgram ):
     def __init__( 
         self, 
         device, 
-        channel, 
         params, 
+        channels    = None, 
         autoconnect = True,
-        barrier = None,
-        threaded = False
+        barrier     = None,
+        threaded    = False
     ):
         """
         Params are
@@ -424,14 +478,14 @@ class CA( BiologicProgram ):
             'current_range':    ecl.IRange.m10
         }
         
-        params = set_defaults( params, defaults )
+        params = set_defaults( params, defaults, channels )
         super().__init__( 
-            device, 
-            channel, 
-            params, 
+            device,  
+            params,
+            channels    = channels,
             autoconnect = autoconnect, 
-            barrier = barrier,
-            threaded = threaded
+            barrier     = barrier,
+            threaded    = threaded
         )
         
         self.params[ 'voltages' ] = [ 
@@ -464,18 +518,20 @@ class CA( BiologicProgram ):
         :param retrieve_data: Automatically retrieve and disconenct form device.
             [Default: True]
         """
-        steps = len( self.params[ 'voltages' ] )
-        
-        params = {
-            'Voltage_step':      self.params[ 'voltages' ],
-            'vs_inital':         [ self.params[ 'vs_initial' ] ]* steps,
-            'Duration_step':     self.params[ 'durations' ],
-            'Step_number':       steps - 1,
-            'Record_every_dT':   self.params[ 'time_interval' ],
-            'Record_every_dI':   self.params[ 'current_interval' ],
-            'N_Cycles':          0,
-            'I_Range':           self.params[ 'current_range' ].value
-        }
+        params = {}
+        for ch, ch_params in self.params.items():
+            steps = len( ch_params[ 'voltages' ] )
+            
+            params[ ch ] = {
+                'Voltage_step':      ch_params[ 'voltages' ],
+                'vs_inital':         [ ch_params[ 'vs_initial' ] ]* steps,
+                'Duration_step':     ch_params[ 'durations' ],
+                'Step_number':       steps - 1,
+                'Record_every_dT':   ch_params[ 'time_interval' ],
+                'Record_every_dI':   ch_params[ 'current_interval' ],
+                'N_Cycles':          0,
+                'I_Range':           ch_params[ 'current_range' ].value
+            }
 
         fields = None
         if retrieve_data:
@@ -538,11 +594,11 @@ class CALimit( BiologicProgram ):
     def __init__( 
         self, 
         device, 
-        channel, 
         params, 
+        channels    = None, 
         autoconnect = True,
-        barrier = None,
-        threaded = False
+        barrier     = None,
+        threaded    = False
     ):
         """
         Params are
@@ -564,14 +620,14 @@ class CALimit( BiologicProgram ):
             'current_range':    ecl.IRange.m10
         }
         
-        params = set_defaults( params, defaults )
+        params = set_defaults( params, defaults, channels )
         super().__init__( 
             device, 
-            channel, 
             params, 
+            channels    = channels,
             autoconnect = autoconnect, 
-            barrier = barrier,
-            threaded = threaded
+            barrier     = barrier,
+            threaded    = threaded
         )
         
         self._technqiues = [ 'calimit' ]
@@ -599,26 +655,28 @@ class CALimit( BiologicProgram ):
         """
         :param retrieve_data: Automatically retrieve and disconenct form device.
             [Default: True]
-        """
-        steps = len( self.params[ 'voltages' ] )
-        
-        params = {
-            'Voltage_step':      self.params[ 'voltages' ],
-            'vs_inital':         [ self.params[ 'vs_initial' ] ]* steps,
-            'Duration_step':     self.params[ 'durations' ],
-            'Step_number':       steps - 1,
-            'Record_every_dT':   self.params[ 'time_interval' ],
-            'Record_every_dI':   self.params[ 'current_interval' ],
-            'Test1_Config':      0, # TODO
-            'Test1_Value':       0,
-            'Test2_Config':      0,
-            'Test2_Value':       0,
-            'Test3_Config':      0,
-            'Test3_Value':       0,
-            'Exit_Cond':         0,
-            'N_Cycles':          0,
-            'I_Range':           self.params[ 'current_range' ].value
-        }
+        """   
+        params = {}
+        for ch, ch_params in self.params.items():
+            steps = len( ch_params[ 'voltages' ] )
+            
+            params[ ch ] = {
+                'Voltage_step':      ch_params[ 'voltages' ],
+                'vs_inital':         [ ch_params[ 'vs_initial' ] ]* steps,
+                'Duration_step':     ch_params[ 'durations' ],
+                'Step_number':       steps - 1,
+                'Record_every_dT':   ch_params[ 'time_interval' ],
+                'Record_every_dI':   ch_params[ 'current_interval' ],
+                'Test1_Config':      0, # TODO
+                'Test1_Value':       0,
+                'Test2_Config':      0,
+                'Test2_Value':       0,
+                'Test3_Config':      0,
+                'Test3_Value':       0,
+                'Exit_Cond':         0,
+                'N_Cycles':          0,
+                'I_Range':           ch_params[ 'current_range' ].value
+            }
 
         fields = None
         if retrieve_data:
@@ -643,31 +701,57 @@ class CALimit( BiologicProgram ):
     def update_voltages( 
         self, 
         voltages, 
-        durations = None, 
+        durations  = None, 
         vs_initial = None 
     ):
         """
-        Update voltage and duration parameters
+        Update voltage and duration parameters.
+        
+        :param voltages: Dictionary of voltages keyed by channel, 
+            or single voltage to apply to all channels.
+        :param durations: Dictionary of durations keyed by channel,
+            or single duration to apply to all channels.
+        :param vs_initial: Dictionary of vs. initials keyed by channel,
+            or single vs. initial boolean to apply to all channels.
         """
-        steps = len( voltages )
-        
-        params = {
-            'Voltage_step': voltages,
-            'Step_number':  steps - 1
-        }
-        
-        if durations is not None:
-            params[ 'Duration_step' ] = durations
+        # format params
+        if not isinstance( voltages, dict ):
+            # transform to dictionary if needed
+            voltages = { ch: voltages for ch in self.channels }
             
-        if vs_initial is not None:
-            params[ 'vs_initial' ] = vs_initial
-        
-        self.device.update_parameters(
-            self.channel, 
-            'calimit', 
-            params, 
-            types = self._parameter_types
-        )
+        if ( durations is not None ) and ( not isinstance( voltages, dict ) ):
+            # transform to dictionary if needed
+            durations = { ch: durations for ch in self.channels }
+           
+        if ( vs_initial is not None ) and ( not isinstance( vs_initial, dict ) ):
+            # transform to dictionary if needed
+            vs_initial = { ch: vs_initial for ch in self.channels }
+         
+        # update voltages
+        for ch, ch_voltages in voltages.items():
+            if not isinstance( ch_voltages, list ):
+                # single voltage given, add to list
+                ch_voltages = [ ch_voltages ]
+            
+            steps = len( ch_voltages )
+
+            params = {
+                'Voltage_step': ch_voltages,
+                'Step_number':  steps - 1
+            }
+
+            if ( durations is not None ) and ( durations[ ch ] ):
+                params[ 'Duration_step' ] = durations[ ch ]
+
+            if ( vs_initial is not None ) and ( vs_initial[ ch ] ):
+                params[ 'vs_initial' ] = vs_initial[ ch ]
+
+            self.device.update_parameters(
+                ch, 
+                'calimit', 
+                params, 
+                types = self._parameter_types
+            )
 
 
 # In[ ]:
@@ -680,16 +764,16 @@ class JV_Scan( BiologicProgram ):
     def __init__( 
         self, 
         device, 
-        channel, 
         params, 
+        channels    = None, 
         autoconnect = True,
-        barrier = None,
-        threaded = False
+        barrier     = None,
+        threaded    = False
     ):
         """
         Params are
-        start: Start voltage. [Defualt: 0]
-        end: End voltage.
+        start: Dictionary of start voltages keyed by channels. [Defualt: 0]
+        end: Dictionary of end voltages keyed by channels.
         step: Voltage step. [Default: 0.01]
         rate: Scan rate in mV/s. [Default: 10]
         average: Average over points. [Default: False]
@@ -701,27 +785,31 @@ class JV_Scan( BiologicProgram ):
             'rate':  10,
             'average': False
         }
-        params = set_defaults( params, defaults )
+        params = set_defaults( params, defaults, channels )
         
         super().__init__( 
             device, 
-            channel, 
             params, 
+            channels    = channels, 
             autoconnect = autoconnect, 
-            barrier = barrier,
-            threaded = threaded
+            barrier     = barrier,
+            threaded    = threaded
         )
         
         self._techniques = [ 'cv' ]
+        
         self._fields = namedtuple( 'CV_Datum', [
            'voltage', 'current', 'power' 
         ] )
+        
         self.field_titles = [ 'Voltage [V]', 'Current [A]', 'Power [W]' ]
+        
         self._data_fields = (
             dp.SP300_Fields.CV
             if self.device.kind is 'SP-300'
             else dp.VMP3_Fields.CV
         )
+        
         self._parameter_types = tfs.CV
     
     
@@ -731,20 +819,22 @@ class JV_Scan( BiologicProgram ):
             [Default: True]
         """
         # setup scan profile ( start -> end -> start )
-        voltage_profile = [ self.params[ 'start' ] ]* 5
-        voltage_profile[ 1 ] = self.params[ 'end' ]
-        
-        params = {
-            'vs_initial':   [ False ]* 5,
-            'Voltage_step': voltage_profile,
-            'Scan_Rate':    [ self.params[ 'rate' ]* 10e-3 ]* 5,
-            'Scan_number':  2,
-            'Record_every_dE':   self.params[ 'step' ],
-            'Average_over_dE':   self.params[ 'average' ],
-            'N_Cycles':          0,
-            'Begin_measuring_I': 0, # start measurement at beginning of interval
-            'End_measuring_I':   1  # finish measurement at end of interval
-        }
+        params = {}
+        for ch, ch_params in self.params.items():
+            voltage_profile = [ ch_params[ 'start' ] ]* 5
+            voltage_profile[ 1 ] = ch_params[ 'end' ]
+
+            params[ ch ] = {
+                'vs_initial':   [ False ]* 5,
+                'Voltage_step': voltage_profile,
+                'Scan_Rate':    [ ch_params[ 'rate' ]* 10e-3 ]* 5,
+                'Scan_number':  2,
+                'Record_every_dE':   ch_params[ 'step' ],
+                'Average_over_dE':   ch_params[ 'average' ],
+                'N_Cycles':          0,
+                'Begin_measuring_I': 0, # start measurement at beginning of interval
+                'End_measuring_I':   1  # finish measurement at end of interval
+            }
         
         fields = None
         if retrieve_data:
@@ -761,6 +851,8 @@ class JV_Scan( BiologicProgram ):
 # In[ ]:
 
 
+MPP_Powers = namedtuple( 'MPP_Powers', [ 'hold', 'probe' ] )
+
 class MPP_Tracking( CALimit ):
     """
     Run MPP tracking.
@@ -768,20 +860,20 @@ class MPP_Tracking( CALimit ):
     def __init__( 
         self, 
         device, 
-        channel, 
         params, 
+        channels    = None, 
         autoconnect = True,
-        barrier = None,
-        threaded = False
+        barrier     = None,
+        threaded    = False
     ):
         """
         Params are
-        init_vmpp: Initial v_mpp.
+        run_time: Run time in seconds.
+        init_vmpp: Dictionary of initial v_mpp keyed by channel.
         probe_step: Voltage step for probe. [Default: 0.005 V]
         probe_points: Number of data points to collect for probe. 
             [Default: 5]
         probe_interval: How often to probe in seconds. [Default: 2]
-        run_time: Run time in seconds.
         record_interval: How often to record a data point in seconds.
             [Default: 1]
         """
@@ -792,25 +884,42 @@ class MPP_Tracking( CALimit ):
             'probe_interval':  2,
             'record_interval': 1
         }
-        params = set_defaults( params, defaults )
+        params = set_defaults( params, defaults, channels )
         
-        run_time        = params[ 'run_time' ]
-        self.v_mpp      = params[ 'init_vmpp' ]
-        self.probe_step = params[ 'probe_step' ]
-        
-        # ca parameters
-        params[ 'voltages' ]  = [ self.v_mpp ]
-        params[ 'durations' ] = [ run_time ]
-        params[ 'time_interval' ] = params[ 'record_interval' ]
+        # map to ca parameters
+        if channels is None:
+            self.v_mpp       = {}
+            self.probe_steps = {}
+            
+            # channel params
+            for ch, ch_params in params.items():
+                init_vmpp = ch_params[ 'init_vmpp' ]
+                self.v_mpp[ ch ]        = init_vmpp
+                self.probe_steps[ ch ]  = ch_params[ 'probe_step' ]
+                
+                ch_params[ 'voltages' ]  = [ init_vmpp ]
+                ch_params[ 'durations' ] = ch_params[ 'run_time' ]
+                ch_params[ 'time_interval' ] = ch_params[ 'record_interval' ]
+                
+        else:
+            init_vmpp  = params[ 'init_vmpp' ]
+            self.v_mpp = { ch: init_vmpp for ch in channels }
+            self.probe_steps = { ch: params[ 'probe_step' ] for ch in channels }
+            
+            params[ 'durations' ] = params[ 'run_time' ]
+            params[ 'voltages' ]  = [ init_vmpp ]
+            
         
         super().__init__( 
             device, 
-            channel, 
             params, 
+            channels    = channels,
             autoconnect = autoconnect, 
-            barrier  = barrier,
-            threaded = threaded
+            barrier     = barrier,
+            threaded    = threaded
         )
+        
+        self.active_channels = self.channels
         
         # timers
         self.last_probe = time.time()
@@ -859,39 +968,57 @@ class MPP_Tracking( CALimit ):
         self._cb_timeout.append( callback )
     
         
-    def run( self, file = None ):
+    def run( self, folder = None ):
         """
-        :param file: File for saving data or 
+        :param folder: Folder for saving data or 
             None if automatic saving is not desired.
             [Default: None]
         """
-
         # start callbacks
         for cb in self._cb_timeout:
             cb.start()
         
         super().run( retrieve_data = False )
-        self.__hold_and_probe( file )  # hold and probe
+        self.__hold_and_probe( folder )  # hold and probe
         
         # program end
         if self.autoconnect is True:
             self._disconnect()
         
-        self.save_data( file )
+        self.save_data( folder, by_channel = True )
         
     #--- helper functions ---           
             
-    def __hold_and_probe( self, file = None ):
+    def __hold_and_probe( self, folder = None ):
         """
-        :param file: File for saving data or 
+        :param folder: Folder for saving data or 
             None if automatic saving is not desired.
             [Default: None]
-        """
-        probe_time = self.params[ 'probe_points' ]* self.params[ 'record_interval' ] # 5 measurements
-        hold_time  = max( 
-            self.params[ 'probe_interval' ] - probe_time,
-            probe_time
-        )
+        """        
+        # calculate hold and probe times
+        # actual hold and probe times are taken as the minimum of sum across the channels.
+        probe_times = {
+            ch: ch_params[ 'probe_points' ]* ch_params[ 'record_interval' ]
+            for ch, ch_params in self.params.items()
+        }
+        
+        hold_times = {
+            ch: max( 
+                ch_params[ 'probe_interval' ] - probe_times[ ch ],
+                probe_times[ ch ]
+            )
+            
+            for ch, ch_params in self.params.items()
+        }
+        
+        cycle_times = { 
+            ch: probe_times[ ch ] + hold_times[ ch ]
+            for ch in self.params
+        }
+        
+        key_channel = min( cycle_times, key = cycle_times.get ) # get key of shortest cycle time
+        hold_time   = hold_times[  key_channel ]
+        probe_time  = probe_times[ key_channel ]
         
         while True:
             # loop until measurement ends 
@@ -901,56 +1028,61 @@ class MPP_Tracking( CALimit ):
                 and self._stop_event.is_set()
             ):
                 logging.warning( 
-                    'Halting program on channel {}.'.format( self.channel ) 
+                    'Halting program on channels {}.'.format( ', '.join( self.channels ) ) 
                 )
                 
                 break
             
             # callbacks
             for cb in self._cb_timeout:
-                cb.call()
-                
+                cb.call()  
                       
             # hold
-            ( hold_state, hold_segment ) = asyncio.run(
+            ( self.active_channels, hold_segments ) = asyncio.run(
                 self.__hold_and_retrieve( hold_time ) 
             )
             
-            self.__append_data( hold_segment ) # add data
+            self.__append_data( hold_segments ) # add data
             
-            if hold_state is ecl.ChannelState.STOP:
+            if len( self.active_channels ) is 0:
                 # program end
                 break
                 
             # probe
-            self.update_voltages( [ self.v_mpp + self.probe_step ] )
-            ( probe_state, probe_segment ) = asyncio.run( 
+            probe_voltages = {
+                ch: self.v_mpp[ ch ] + self.probe_steps[ ch ]
+                for ch in self.active_channels
+            }
+            
+            self.update_voltages( probe_voltages  )
+            ( self.active_channels, probe_segments ) = asyncio.run( 
                 self.__hold_and_retrieve( probe_time ) 
             )
             
-            self.__append_data( probe_segment ) # add data
+            self.__append_data( probe_segments ) # add data
             
-            if probe_state is ecl.ChannelState.STOP:
+            if len( self.active_channels ) is 0:
                 # program end
                 break
     
             # compare powers
-            ( hold_pwr, probe_pwr ) = self.__calculate_powers( 
-                hold_segment.data,
-                probe_segment.data
+            powers = self.__calculate_powers( 
+                hold_segments,
+                probe_segments
             )
-            
+               
             # set new v_mpp
-            self.__new_v_mpp( hold_pwr, probe_pwr )
-            self.update_voltages( [ self.v_mpp ] )
+            self.__new_v_mpp( powers )
+            self.update_voltages( self.v_mpp )
 
             # save intermediate data
-            if file is not None:
-                self.save_data( file )
+            if folder is not None:
+                self.save_data( folder, by_channel = True )
                 
     
     async def __hold_and_retrieve( self, duration ):
         """
+        @async
         Wait for a given time, then retrieve data
         
         :param duration: Time since last probe in seconds.
@@ -962,13 +1094,17 @@ class MPP_Tracking( CALimit ):
             
         self.last_probe = time.time() # reset last probe time
         
-        segment = self._retrieve_data_segment()
-        state = ecl.ChannelState( segment.values.State  )
+        segments = await self._retrieve_data_segments()
+        active = [ 
+            ch 
+            for ch, segment in segments.items() 
+            if ( ecl.ChannelState( segment.values.State  ) is ecl.ChannelState.RUN )
+        ]
         
-        return ( state, segment )
+        return ( active, segments )
     
     
-    def __append_data( self, segment ):
+    def __append_data( self, segments ):
         fields = lambda datum, segment: (
             dp.calculate_time( 
                 datum.t_high, 
@@ -983,13 +1119,27 @@ class MPP_Tracking( CALimit ):
             datum.cycle
         )
         
-        self._data += [
-            self._fields( *fields( datum, segment ) )
-            for datum in segment.data
-        ]
+        for ch, segment in segments.items():
+            self._data[ ch ] += [
+                self._fields( *fields( datum, segment ) )
+                for datum in segment.data
+            ]
         
     
-    def __calculate_powers( self, hold_data, probe_data ):
+    def __calculate_powers( self, hold_segments, probe_segments ):
+        powers = {
+            ch: self.__calculate_power( 
+                hold_segments[ ch ].data, 
+                probe_segments[ ch ].data 
+            )
+            
+            for ch in self.active_channels
+        }   
+            
+        return powers
+        
+    
+    def __calculate_power( self, hold_data, probe_data ):
         # normalize compare times
         cmp_len = min( len( hold_data ), len( probe_data ) ) 
         hold_data  = hold_data[  -cmp_len: ]
@@ -1003,17 +1153,23 @@ class MPP_Tracking( CALimit ):
         hold  = sum( hold )  / len( hold )
         probe = sum( probe ) / len( probe )
            
-        return ( hold, probe )
+        return MPP_Powers( hold, probe )
     
     
-    def __new_v_mpp( self, hold, probe ):
-        probe_better = ( probe < hold ) # powers are negative
-        
-        if not probe_better:
-            # probe was worse, move in opposite direction
-            self.probe_step *= -1
-            
-        self.v_mpp += self.probe_step
+    def __new_v_mpp( self, powers ):
+        for ch, ch_power in powers.items():
+            # update probe directions
+            probe_better = ( ch_power.probe < ch_power.hold ) # powers are negative
+
+            if not probe_better:
+                # probe was worse, move in opposite direction
+                self.probe_steps[ ch ] *= -1
+
+        # update v_mpp
+        self.v_mpp = { 
+            ch: v_mpp + self.probe_steps[ ch ]
+            for ch, v_mpp in self.v_mpp.items()
+        }
 
 
 # In[ ]:
@@ -1026,11 +1182,11 @@ class MPP( MPP_Tracking ):
     def __init__( 
         self, 
         device, 
-        channel, 
         params, 
+        channels    = None, 
         autoconnect = True,
-        barrier = None,
-        threaded = False
+        barrier     = None,
+        threaded    = False
     ):
         """
         Params are
@@ -1041,51 +1197,60 @@ class MPP( MPP_Tracking ):
         probe_interval: How often to probe in seconds. [Default: 2]
         record_interval: How often to record a data point in seconds.
             [Default: 1]
+    
         """
-        params[ 'init_vmpp' ] = 0 # initial set of vmpp
+        
+        defaults = {
+            'init_vmpp': 0 # initial set of vmpp
+        }
+        params = set_defaults( params, defaults, channels )
+        
         super().__init__( 
             device, 
-            channel, 
             params, 
+            channels    = channels, 
             autoconnect = autoconnect, 
-            barrier = barrier,
-            threaded = threaded
+            barrier     = barrier,
+            threaded    = threaded
         )
         
         self.voc = None
         self._techniques = [ 'ocv', 'cv', 'ca' ]
     
     
-    def run( self, data = 'data' ):
+    def run( self, data = 'data', by_channel = False ):
         """
         :param data: Data folder path. [Default: 'data']
+        :param by_channel: Save data by channel. [Defualt: False]
         """
         # create folder path if needed
         if not os.path.exists( data ):
             os.makedirs( data )
             
-        ocv_file = 'voc.csv'
-        jv_file  = 'jv.csv'
-        mpp_file = 'mpp.csv'
+        ocv_loc = 'voc' if by_channel else 'voc.csv'
+        jv_loc  = 'jv'  if by_channel else 'jv.csv'
+        mpp_loc = 'mpp'
         
-        mpp_file = os.path.join( data, mpp_file )
-        ocv_file = os.path.join( data, ocv_file )
-        jv_file  = os.path.join( data, jv_file )
+        mpp_loc = os.path.join( data, mpp_loc )
+        ocv_loc = os.path.join( data, ocv_loc )
+        jv_loc  = os.path.join( data, jv_loc )
         
         if self.autoconnect is True:
             self._connect()
         
         #--- init ---
-        self.__init_mpp_file( mpp_file ) # init file
+#         self.__init_mpp_file( mpp_file ) # init file
         
-        self.voc = self.__run_ocv( ocv_file ) # voc
-        self.v_mpp = self.__run_jv( self.voc, jv_file ) # jv 
-        self.params[ 'init_vmpp' ] = self.v_mpp
+        self.voc = self.__run_ocv( ocv_loc, by_channel = by_channel ) # voc
+        self.v_mpp = self.__run_jv( self.voc, jv_loc, by_channel = by_channel ) # jv 
+        
+        for ch, ch_params in self.params.items():
+            ch_params[ 'init_vmpp' ] = self.v_mpp[ ch ]
         
         self.sync()
-        print( 'Beginning MPP tracking on channel {}...'.format( self.channel ) )
+        print( 'Beginning MPP tracking on channels {}...'.format( self.channels ) )
             
-        super().run( mpp_file ) # mpp tracking
+        super().run( mpp_folder ) # mpp tracking
         
     #--- helper functions ---
     
@@ -1110,14 +1275,14 @@ class MPP( MPP_Tracking ):
                 
             else:
                 raise err
-                
             
             
-    def __run_ocv( self, file ):
+    def __run_ocv( self, file, by_channel = False ):
         """
         Runs an OCV program to find the voc for each channel.
         
         :param file: File to save data.
+        :param by_channel: Save data by channel. [Defualt: False]
         :returns: Averaged open circuit votlages.
         """
         ocv_params = {
@@ -1128,53 +1293,73 @@ class MPP( MPP_Tracking ):
         
         ocv_pg = OCV( 
             self.device, 
-            self.channel, 
             ocv_params, 
+            channels    = self.channels, 
             autoconnect = False,
             barrier  = self.barrier,
             threaded = self._threaded
         )
         
         ocv_pg.run()
-        ocv_pg.save_data( file )
+        ocv_pg.save_data( file, by_channel = by_channel )
         
-        voc = [ datum.voltage for datum in ocv_pg.data ]
-        voc = sum( voc )/ len( voc )
+        voc = { 
+            ch: [ datum.voltage for datum in data ]
+            for ch, data in ocv_pg.data.items()
+        }
+        
+        voc = { 
+            ch: sum( ch_voc )/ len( ch_voc ) 
+            for ch, ch_voc in voc.items()  
+        }
         
         return voc
         
         
-    def __run_jv( self, voc, file ):
+    def __run_jv( self, voc, file, by_channel = False ):
         """
         Runs JV_Scan program to obtain initial v_mpp.
         
         :param file: File for saving data.
         :param voc: Dictionary of open circuit voltages keyed by channel.
             Scan runs from Voc to 0 V.
+        :param by_channel: Save data by channel. [Defualt: False]
         :returns: MPP voltage calculated from teh JV scan results.
         """
         jv_params = {
-            'start': voc, 
-            'end':   0,
-            'step':  5e-3, # 5 mV
-            'rate':  100, # 100 mV/s
-            'average': False
+            ch: {
+                'start': ch_voc, 
+                'end':   0,
+                'step':  5e-3, # 5 mV
+                'rate':  100, # 100 mV/s
+                'average': False
+            }
+            
+            for ch, ch_voc in voc.items()
         }
 
         prg = JV_Scan( 
             self.device, 
-            self.channel, 
             jv_params,
+            channels    = None, # channels implies in params
             autoconnect = False,
             barrier  = self.barrier,
             threaded = self._threaded
         )
         
         prg.run()
-        prg.save_data( file )
+        prg.save_data( file, by_channel = by_channel )
         
-        mpp = min( prg.data, key = lambda d: d.power ) # power of interest is negative
-        v_mpp = mpp.voltage
+        mpp = {
+            ch: min( data, key = lambda d: d.power ) # power of interest is negative
+            for ch, data in prg.data.items()
+        }
+        
+        v_mpp = { 
+            ch: ch_mpp.voltage 
+            for ch, ch_mpp in mpp.items() 
+        }
+        
         return v_mpp
 
 
@@ -1189,11 +1374,11 @@ class MPP_Cycles( MPP ):
     def __init__( 
         self, 
         device, 
-        channel, 
         params, 
+        channels    = None, 
         autoconnect = True,
-        barrier = None,
-        threaded = False
+        barrier     = None,
+        threaded    = False
     ):
         """
         Params are
@@ -1212,11 +1397,11 @@ class MPP_Cycles( MPP ):
         
         super().__init__( 
             device, 
-            channel, 
             params, 
+            channels    = channels, 
             autoconnect = autoconnect, 
-            barrier = barrier,
-            threaded = threaded
+            barrier     = barrier,
+            threaded    = threaded
         )
        
     
@@ -1224,9 +1409,13 @@ class MPP_Cycles( MPP ):
         """
         :param data: Data folder path. [Default: 'data']
         """
-        remainder, cycles = math.modf( 
-            self.params[ 'total_run_time' ]/ self.params[ 'run_time' ]
-        )
+        cycles = {
+            ch: math.modf( 
+                ch_params[ 'total_run_time' ]/ ch_params[ 'run_time' ]
+            )
+            
+            for ch, ch_params in self.params.items():
+        }
         
         cycle = 0
         while cycle < cycles:
@@ -1247,7 +1436,7 @@ class MPP_Cycles( MPP ):
         if self.barrier is not None:
             self.barrier.wait()
 
-        print( 'Starting cycle {} on channel {}.'.format( cycle, self.channel ) )
+        print( 'Starting cycle {} on channels {}.'.format( cycle, self.channels ) )
         super().run( folder )
         
 

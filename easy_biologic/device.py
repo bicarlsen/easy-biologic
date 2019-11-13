@@ -107,7 +107,7 @@ class BiologicDevice:
     @property
     def plugged( self ):
         """
-        :returns: List of channel availablilities.
+        :returns: List of channel availabilities.
         """
         return self.__plugged
     
@@ -378,9 +378,8 @@ class BiologicDevice:
         :returns: TechData object with properties [ data, info, value ].
         """  
         
-        ( data, info, values ) = await ecl.get_data( self.idn, ch )
-        return TechData( data, info, values )
-    
+        raw = await ecl.get_data_async( self.idn, ch )
+        return TechData( *raw )
         
     
     #--- private methods ---

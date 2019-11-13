@@ -855,7 +855,7 @@ def start_channels( idn, chs ):
     active = create_active_array( chs, num_chs )
     idn = c.c_int32( idn )
     
-    err = BL_StartChannel( 
+    err = BL_StartChannels( 
         idn, c.byref( active ), c.byref( results ), num_chs
     )
     
@@ -891,7 +891,7 @@ def stop_channels( idn, chs ):
     active = create_active_array( chs, num_chs )
     idn = c.c_int32( idn )
     
-    err = BL_StopChannel( 
+    err = BL_StopChannels( 
         idn, c.byref( active ), c.byref( results ), num_chs
     )
     
