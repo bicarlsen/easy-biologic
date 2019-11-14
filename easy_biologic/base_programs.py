@@ -1414,9 +1414,11 @@ class MPP_Cycles( MPP ):
                 ch_params[ 'total_run_time' ]/ ch_params[ 'run_time' ]
             )
             
-            for ch, ch_params in self.params.items():
+            for ch, ch_params in self.params.items()
         }
-        
+
+        remainder, cycles = cycles[ self.channels[ 0 ] ]
+
         cycle = 0
         while cycle < cycles:
             self._run_mpp_cycle( cycle, data )
