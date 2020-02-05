@@ -98,7 +98,7 @@ from .ec_errors import EcError
 
 # ## Constants
 
-# In[ ]:
+# In[1]:
 
 
 class IRange( Enum ):
@@ -613,6 +613,7 @@ def connect( address, timeout = 5 ):
     idn     = c.c_int32()
     info    = DeviceInfo()
     
+    logging.debug( '[easy-biologic] Connecting to device {}.'.format( address.value ) )
     err = BL_Connect(
         c.byref( address ),
         timeout,
@@ -621,6 +622,8 @@ def connect( address, timeout = 5 ):
     )
     
     validate( err )
+    logging.debug( '[easy-biologic] Conneced to device {}.'.format( address.value ) )
+    
     return ( idn.value, info )
 
 
@@ -632,9 +635,10 @@ def disconnect( idn ):
     """
     idn = c.c_int32( idn )
     
+    logging.debug( '[easy-biologic] Disconnecting from device {}.'.format( idn.value ) )
     err = BL_Disconnect( idn )
-    
     validate( err )
+    logging.debug( '[easy-biologic] Disconnected from device {}.'.format( idn.value ) )
     
     
 def is_connected( idn ):
@@ -647,6 +651,7 @@ def is_connected( idn ):
     idn = c.c_int32( idn )
     
     try:
+        logging.debug( '[easy-biologic] Checking connection fo device {}.'.format( idn.value ) )
         validate( 
             BL_TestConnection( idn )
         )
@@ -696,6 +701,7 @@ def init_channels( idn, chs, force_reload = False, bin_file = None, xlx_file = N
         )
     )
     
+    logging.debug( '[easy-biologic] Initializing channels {} on device {}.'.format( chs, idn.value ) )
     err = BL_LoadFirmware(
             idn, 
             c.byref( active ), 
@@ -714,6 +720,7 @@ def is_channel_connected( idn, ch ):
     idn = c.c_int32( idn )
     ch = c.c_uint8( ch )
     
+    logging.debug( '[easy-biologic] Checking channel {}\'s connection.'.format( ch.value ) )
     conn = BL_IsChannelPlugged( idn, ch )
     
     return conn.value
@@ -731,6 +738,7 @@ def get_channels( idn, size = 16 ):
     channels = ( c.c_uint8* size )()
     size = c.c_int32( size )
     
+    logging.debug( '[easy-biologic] Getting channels for device {}.'.format( idn.value ) )
     err = BL_GetChannelsPlugged(
         idn, c.byref( channels ), size
     )
@@ -751,6 +759,7 @@ def channel_info( idn, ch ):
     ch   = c.c_uint8( ch )
     info = ChannelInfo()
     
+    logging.debug( '[easy-biologic] Getting info for channel {} on device {}.'.format( ch.value, idn.value ) )
     err = BL_GetChannelInfos(
         idn, ch, c.byref( info )
     )
@@ -792,6 +801,7 @@ def load_technique(
     last  = c.c_bool( last )
     verbose = c.c_bool( verbose )
     
+    logging.debug( '[easy-biologic] Loading technique on channel {} on device {}.'.format( ch.value, idn.value ) )
     err = BL_LoadTechnique( 
         idn, ch, c.byref( technique ), params, first, last, verbose 
     )
@@ -819,6 +829,7 @@ def update_parameters( idn, ch, technique, params, index = 0, device = None ):
     technique = c.create_string_buffer( technique.encode( 'utf-8' ) )
     index = c.c_int32( index )
     
+    logging.debug( '[easy-biologic] Updating parameters on channel {} on device {}.'.format( ch.value, idn.value ) )
     err = BL_UpdateParameters(
         idn, ch, index, params, c.byref( technique )
     )
@@ -836,6 +847,7 @@ def start_channel( idn, ch ):
     idn = c.c_int32( idn )
     ch  = c.c_uint8( ch )
     
+    logging.debug( '[easy-biologic] Starting channel {} on device {}.'.format( ch.value, idn.value ) )
     err = BL_StartChannel( 
         idn, ch 
     )
@@ -855,6 +867,7 @@ def start_channels( idn, chs ):
     active = create_active_array( chs, num_chs )
     idn = c.c_int32( idn )
     
+    logging.debug( '[easy-biologic] Starting channels {} on device {}.'.format( chs, idn.value ) )
     err = BL_StartChannels( 
         idn, c.byref( active ), c.byref( results ), num_chs
     )
@@ -872,6 +885,7 @@ def stop_channel( idn, ch ):
     idn = c.c_int32( idn )
     ch  = c.c_uint8( ch )
     
+    logging.debug( '[easy-biologic] Stopping channel {} on device {}.'.format( ch.value, idn.value ) )
     err = BL_StopChannel( 
         idn, ch 
     )
@@ -891,6 +905,7 @@ def stop_channels( idn, chs ):
     active = create_active_array( chs, num_chs )
     idn = c.c_int32( idn )
     
+    logging.debug( '[easy-biologic] Stopping channels {} on device {}.'.format( chs, idn.value ) )
     err = BL_StopChannels( 
         idn, c.byref( active ), c.byref( results ), num_chs
     )
@@ -910,6 +925,7 @@ def get_values( idn, ch ):
     ch  = c.c_uint8( ch )
     values = CurrentValues()
 
+    logging.debug( '[easy-biologic] Getting values of channel {} on device {}.'.format( ch.value, idn.value ) )
     err = BL_GetCurrentValues(
         idn, ch, c.byref( values )
     )
@@ -935,6 +951,7 @@ def get_data( idn, ch ):
     info = DataInfo()
     values = CurrentValues()
         
+    logging.debug( '[easy-biologic] Getting data of channel {} on device {}.'.format( ch.value, idn.value ) )
     err = BL_GetData(
         idn, ch, c.byref( data ), c.byref( info ), c.byref( values )
     )
@@ -962,6 +979,7 @@ async def connect_async( address, timeout = 5 ):
     idn     = c.c_int32()
     info    = DeviceInfo()
     
+    logging.debug( '[easy-biologic] Connecting to device {}.'.format( address.value ) )
     err = await BL_Connect_async(
         c.byref( address ),
         timeout,
@@ -981,8 +999,8 @@ async def disconnect_async( idn ):
     """
     idn = c.c_int32( idn )
     
+    logging.debug( '[easy-biologic] Disconnecting from device {}.'.format( idn.vlaue ) )
     err = await BL_Disconnect_async( idn )
-    
     validate( err )
     
     
@@ -996,6 +1014,7 @@ async def is_connected_async( idn ):
     idn = c.c_int32( idn )
     
     try:
+        logging.debug( '[easy-biologic] Checking connection of device {}.'.format( idn.value ) )
         validate( 
             await BL_TestConnection_async( idn )
         )
@@ -1045,6 +1064,7 @@ async def init_channels_async( idn, chs, force_reload = False, bin_file = None, 
         )
     )
     
+    logging.debug( '[easy-biologic] Initializing channels {} on device {}.'.format( chs, idn.value ) )
     err = await BL_LoadFirmware_async(
             idn, 
             c.byref( active ), 
@@ -1063,6 +1083,7 @@ async def is_channel_connected_async( idn, ch ):
     idn = c.c_int32( idn )
     ch = c.c_uint8( ch )
     
+    logging.debug( '[easy-biologic] Checking connection of channel {} on device {}.'.format( ch.value, idn.value ) )
     conn = await BL_IsChannelPlugged_async( idn, ch )
     
     return conn.value
@@ -1080,6 +1101,7 @@ async def get_channels_async( idn, size = 16 ):
     channels = ( c.c_uint8* size )()
     size = c.c_int32( size )
     
+    logging.debug( '[easy-biologic] Getting channels on device {}.'.format( idn.value ) )
     err = await BL_GetChannelsPlugged_async(
         idn, c.byref( channels ), size
     )
@@ -1100,6 +1122,7 @@ async def channel_info_async( idn, ch ):
     ch   = c.c_uint8( ch )
     info = ChannelInfo()
     
+    logging.debug( '[easy-biologic] Getting info of channel {} on device {}.'.format( ch.value, idn.value ) )
     err = await BL_GetChannelInfos_async(
         idn, ch, c.byref( info )
     )
@@ -1141,6 +1164,7 @@ async def load_technique_async(
     last  = c.c_bool( last )
     verbose = c.c_bool( verbose )
     
+    logging.debug( '[easy-biologic] Loading technique to channel {} on device {}.'.format( ch.value, idn.value ) )
     err = await BL_LoadTechnique_async( 
         idn, ch, c.byref( technique ), params, first, last, verbose 
     )
@@ -1168,6 +1192,7 @@ async def update_parameters_async( idn, ch, technique, params, index = 0, device
     technique = c.create_string_buffer( technique.encode( 'utf-8' ) )
     index = c.c_int32( index )
     
+    logging.debug( '[easy-biologic] Updating parameters on channel {} of device {}.'.format( ch.value, idn.value ) )
     err = await BL_UpdateParameters_async(
         idn, ch, index, params, c.byref( technique )
     )
@@ -1185,6 +1210,7 @@ async def start_channel_async( idn, ch ):
     idn = c.c_int32( idn )
     ch  = c.c_uint8( ch )
     
+    logging.debug( '[easy-biologic] Starting channel {} on device {}.'.format( ch.value, idn.value ) )
     err = await BL_StartChannel_async( 
         idn, ch 
     )
@@ -1204,6 +1230,7 @@ async def start_channels_async( idn, chs ):
     active = create_active_array( chs, num_chs )
     idn = c.c_int32( idn )
     
+    logging.debug( '[easy-biologic] Starting channels {} on device {}.'.format( chs, idn.value ) )
     err = await BL_StartChannel_async( 
         idn, c.byref( active ), c.byref( results ), num_chs
     )
@@ -1221,6 +1248,7 @@ async def stop_channel_async( idn, ch ):
     idn = c.c_int32( idn )
     ch  = c.c_uint8( ch )
     
+    logging.debug( '[easy-biologic] Stopping channel {} on device {}.'.format( ch.value, idn.value ) )
     err = await BL_StopChannel_async( 
         idn, ch 
     )
@@ -1240,6 +1268,7 @@ async def stop_channels_async( idn, chs ):
     active = create_active_array( chs, num_chs )
     idn = c.c_int32( idn )
     
+    logging.debug( '[easy-biologic] Stopping channels {} on device {}.'.format( chs, idn.value ) )
     err = await BL_StopChannel_async( 
         idn, c.byref( active ), c.byref( results ), num_chs
     )
@@ -1259,6 +1288,7 @@ async def get_values_async( idn, ch ):
     ch  = c.c_uint8( ch )
     values = CurrentValues()
 
+    logging.debug( '[easy-biologic] Getting values from channel {} on device {}.'.format( ch.value, idn.value ) )
     err = await BL_GetCurrentValues_async(
         idn, ch, c.byref( values )
     )
@@ -1284,6 +1314,7 @@ async def get_data_async( idn, ch ):
     info = DataInfo()
     values = CurrentValues()
         
+    logging.debug( '[easy-biologic] Getting data from channel {} on device {}.'.format( ch.value, idn.value ) )
     err = await BL_GetData_async(
         idn, ch, c.byref( data ), c.byref( info ), c.byref( values )
     )

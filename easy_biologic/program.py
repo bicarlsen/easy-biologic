@@ -10,7 +10,7 @@
 # ### Methods
 # **BiologicProgram( device, channel, params, autoconnect = True, barrier = None ):** Creates a new program.
 # 
-# **on_data( callback, index = None ):** Retgisters a callback function to run when data is collected.
+# **on_data( callback, index = None ):** Registers a callback function to run when data is collected.
 # 
 # **run():** Runs the program.
 # 
@@ -291,7 +291,7 @@ class BiologicProgram( ABC ):
         Sets stop event.
         """
         if self._stop_event is None:
-            logging.warning( 'No stop event is present on channel {}.'.format( self.channel ) )
+            logging.warning( 'No stop event is present on channels {}.'.format( self.channels ) )
             return
                 
         self._stop_event.set()
@@ -453,11 +453,9 @@ class BiologicProgram( ABC ):
                     # write header only if not appending
                     # write channel header if multichanneled
                     num_titles = len( self.field_titles )
-                    ch_title = '{}' + ','* num_titles
-
                     ch_header = ''
                     for ch in self.channels:
-                        ch_header += ch_title.format( ch )
+                        ch_header += ( '{},'.format( ch ) )* num_titles
 
                     # replace last comma with line end
                     ch_header = ch_header[ :-1 ] + '\n'
@@ -468,7 +466,7 @@ class BiologicProgram( ABC ):
                     title_header = ''
                     for _ in self.channels:
                         # create titles for each channnel
-                        title_header += ', '.join( self.field_titles ) + ','
+                        title_header += ','.join( self.field_titles ) + ','
                         
                     # replace last comma with new line
                     title_header = title_header[ :-1 ] + '\n'
@@ -484,7 +482,7 @@ class BiologicProgram( ABC ):
                     for ch, ch_data in self.data.items():
                         if index < num_rows[ ch ]:
                             # valid row for channel
-                            row_data += ', '.join( map( str, ch_data[ index ] ) ) + ','
+                            row_data += ','.join( map( str, ch_data[ index ] ) ) + ','
                         
                         else:
                             # channel data exhausted, write placeholders
@@ -524,14 +522,14 @@ class BiologicProgram( ABC ):
             
             csv_data = ''
             for datum in ch_data:
-                csv_data += ', '.join( map( str, datum ) )
+                csv_data += ','.join( map( str, datum ) )
                 csv_data += '\n'
                                       
             try:
                 with open( file, mode ) as f:
                     if not append:
                         # write header only if not appending
-                        f.write( ', '.join( self.field_titles ) + '\n' )
+                        f.write( ','.join( self.field_titles ) + '\n' )
 
                     # write data
                     f.write( csv_data )             
