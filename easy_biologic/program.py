@@ -10,25 +10,31 @@
 # ### Methods
 # **BiologicProgram( device, channel, params, autoconnect = True, barrier = None ):** Creates a new program.
 # 
+# **channel_state( channels = None):** Returns the state of channels. 
+# 
 # **on_data( callback, index = None ):** Registers a callback function to run when data is collected.
 # 
 # **run():** Runs the program.
 # 
+# **stop():** Sets the stop event flag.
+# 
 # **save_data( file, append = False ):** Saves data to the given file.
 # 
-# **_connect():** Connects to the device
+# **sync():** Waits for barrier, if set.
+# 
+# **_connect():** Connects to the device.
 # 
 # ### Properties
-# **device:** BiologicDevice.
-# **channel:** Device channel.
-# **params:** Passed in parameters.
-# **autoconnect:** Whether connection to the device should be automatic or not.
-# **barrier:** A threading.Barrier to use for channel syncronization. [See ProgramRummer]
-# **field_titles:** Column names for saving data.
-# **data:** Data collected during the program.
-# **status:** Status of the program.
-# **fields:** Data fields teh program returns.
-# **technqiues:** List of techniques the program uses.
+# **device:** BiologicDevice. <br>
+# **channel:** Device channel. <br>
+# **params:** Passed in parameters. <br>
+# **autoconnect:** Whether connection to the device should be automatic or not. <br>
+# **barrier:** A threading.Barrier to use for channel syncronization. [See ProgramRummer] <br>
+# **field_titles:** Column names for saving data. <br>
+# **data:** Data collected during the program. <br>
+# **status:** Status of the program. <br>
+# **fields:** Data fields teh program returns. <br>
+# **technqiues:** List of techniques the program uses. <br>
 # 
 # ## Program Runner
 # Represents a program to be run on a device channel.
@@ -38,8 +44,13 @@
 # 
 # **start():** Runs the programs.
 # 
+# **wait():** Wait for all threads to finish.
+# 
+# **stop():** Sets the stop event.
+# 
 # ### Properties
-# **sync:** Whether to sync the threads or not. If True a threading.sync is 
+# **threads:** List of threads for each program. <br>
+# **sync:** Whether to sync the threads or not.
 # 
 
 # In[1]:
@@ -266,6 +277,17 @@ class BiologicProgram( ABC ):
         """
         if self.barrier is not None:
             self.barrier.wait()
+            
+            
+    def stop( self, signal, frame ):
+        """
+        Sets stop event.
+        """
+        if self._stop_event is None:
+            logging.warning( 'No stop event is present on channels {}.'.format( self.channels ) )
+            return
+                
+        self._stop_event.set()
     
     #--- protected methods ---
     
@@ -284,17 +306,6 @@ class BiologicProgram( ABC ):
         """
         if self.device.is_connected():
             self.device.disconnect()
-            
-            
-    def stop( self, signal, frame ):
-        """
-        Sets stop event.
-        """
-        if self._stop_event is None:
-            logging.warning( 'No stop event is present on channels {}.'.format( self.channels ) )
-            return
-                
-        self._stop_event.set()
          
     
     def _run( self, technique, params, fields = None, interval = 1 ):

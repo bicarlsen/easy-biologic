@@ -50,6 +50,19 @@ class CA( Enum ):
 # In[ ]:
 
 
+class CP( Enum ):
+    Current_step      = float
+    vs_initial        = bool
+    Duration_step     = float
+    Step_number       = int
+    Record_every_dT   = float
+    Record_every_dE   = float
+    N_Cycles          = int
+
+
+# In[ ]:
+
+
 class CALIMIT( Enum ):
     Voltage_step      = float
     vs_initial        = bool
@@ -57,6 +70,26 @@ class CALIMIT( Enum ):
     Step_nuber        = int
     Record_every_dT   = float
     Record_every_dI   = float
+    Test1_Config      = int
+    Test1_Value       = float
+    Test2_Config      = int
+    Test2_Value       = float
+    Test3_Config      = int
+    Test3_Value       = float
+    Exit_Cond         = int
+    N_Cycles          = int
+
+
+# In[ ]:
+
+
+class CPLIMIT( Enum ):
+    Current_step      = float
+    vs_initial        = bool
+    Duration_step     = float
+    Step_nuber        = int
+    Record_every_dT   = float
+    Record_every_dE   = float
     Test1_Config      = int
     Test1_Value       = float
     Test2_Config      = int

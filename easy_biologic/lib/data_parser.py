@@ -4,6 +4,23 @@
 # # Data Parser
 # Parses data retrieved from a technqiue.
 
+# ## API
+# Parses data received from a technique and contains technique fields for different device types.
+# 
+# ### Methods
+# **parse( datam info, fields = None ):** Parses data received from a technique.
+# 
+# **calculate_time( t_high, t_low, data_info, current_value ):** Calculates elapsed time from time data.
+# 
+# ### Classes
+# **VMP3_Fields:** Contains technqiue fields for VMP3 devices. 
+# (Not all techniques are implemented)
+# Properties: [ OCV, CP, CA, CPLIMIT, CALIMIT, CV ]
+# 
+# **SP300_Fields:** Contains technqiue fields for SP-300 devices. 
+# (Not all techniques are implemented)
+# Properties: [ OCV, CP, CA, CPLIMIT, CALIMIT, CV ]
+
 # In[14]:
 
 
@@ -46,7 +63,7 @@ def parse( data, info, fields = None ):
         else datum
         for index, datum in enumerate( data )
     ]
-    # print( data )
+
     # group data
     parsed = [
         Datum( *data[ i : i + cols ] ) for i in range( 0, rows* cols, cols )
@@ -102,7 +119,7 @@ class VMP3_Fields():
         FI( 't_high',   INT32   ),  
         FI( 't_low',    INT32   ),
         FI( 'voltage',  SINGLE  ),
-        FI( 'current',  SINGLE  )
+        FI( 'control',  SINGLE  )
     ]
     
     CP = [
