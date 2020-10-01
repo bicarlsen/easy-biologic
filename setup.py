@@ -11,7 +11,7 @@ setuptools.setup(
     description="Controller class for communicating with BioLogic devices.",
     long_description=long_description,
     long_description_content_type="text/markdown",
-    keywords=[],
+    keywords=[ 'biologic' ],
     url="",
     packages=setuptools.find_packages(),
     classifiers=[

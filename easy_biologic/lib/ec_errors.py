@@ -23,6 +23,11 @@ class EcError( Exception ):
             'Invalid function parameters.'
         ),
         
+        -6: (
+            'ERR_GEN_FUNCTIONFAILED',
+            'Function failed.'
+        ),
+        
         -9: (
             'ERR_GEN_ECLAB_LOADED',
             'ECLab firmware laoded on instrument.'

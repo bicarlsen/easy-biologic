@@ -88,12 +88,7 @@ class BiologicDevice:
         :returns: Device model.
         :raises: RuntimeError if no device is connected at the connection string.
         """
-        devs = ecf.find_devices()
-        for device in devs:
-            if self.address == device.connection_string:
-                return device.kind
-            
-        raise RuntimeError( 'No device found at {}.'.format( self.address ) )
+        return ecl.DeviceCodes( self.info.DeviceCode )
     
     
     @property

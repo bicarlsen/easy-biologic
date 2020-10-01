@@ -147,7 +147,7 @@ class BiologicProgram( ABC ):
 
         # TODO: signal handling
         # register interupt signal
-        if not self._threaded:
+        if self._threaded:
             signal.signal(
                 signal.SIGINT,
                 self.stop
