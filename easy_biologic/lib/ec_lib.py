@@ -81,7 +81,7 @@
 # **DataInfo:** Metadata of measured data. <br>
 # Fields: [ IRQskipped, NbRows, NbCols, TechniqueIndex, TechniqueID, processIndex, loop, StartTime, MuxPad ]
 
-# In[1]:
+# In[13]:
 
 
 # standard imports
@@ -98,8 +98,87 @@ from .ec_errors import EcError
 
 # ## Constants
 
-# In[1]:
+# In[2]:
 
+
+class DeviceCodes( Enum ):
+    """
+    Device codes used to identify the device type.
+    """
+    KBIO_DEV_VMP = 0
+    KBIO_DEV_VMP2 = 1
+    KBIO_DEV_MPG = 2
+    KBIO_DEV_BISTAT = 3
+    KBIO_DEV_MCS_200 = 4
+    KBIO_DEV_VMP3 = 5
+    KBIO_DEV_VSP = 6
+    KBIO_DEV_HCP803 = 7
+    KBIO_DEV_EPP400 = 8
+    KBIO_DEV_EPP4000 = 9
+    KBIO_DEV_BISTAT2 = 10
+    KBIO_DEV_FCT150S = 11
+    KBIO_DEV_VMP300 = 12
+    KBIO_DEV_SP50 = 13
+    KBIO_DEV_SP150 = 14
+    KBIO_DEV_FCT50S = 15
+    KBIO_DEV_SP300 = 16
+    KBIO_DEV_CLB500 = 17
+    KBIO_DEV_HCP1005 = 18
+    KBIO_DEV_CLB2000 = 19
+    KBIO_DEV_VSP300 = 20
+    KBIO_DEV_SP200 = 21
+    KBIO_DEV_MPG2 = 22
+    KBIO_DEV_ND1 = 23
+    KBIO_DEV_ND2 = 24
+    KBIO_DEV_ND3 = 25
+    KBIO_DEV_ND4 = 26
+    KBIO_DEV_SP240 = 27
+    KBIO_DEV_MPG205 = 28
+    KBIO_DEV_MPG210 = 29
+    KBIO_DEV_MPG220 = 30
+    KBIO_DEV_MPG240 = 31
+    KBIO_DEV_UNKNOWN = 255
+    
+
+class DeviceCodeDescriptions( Enum ):
+    """
+    Description of DeviceCodes.
+    """
+    KBIO_DEV_VMP = 'VMP device'
+    KBIO_DEV_VMP2 = 'VMP2 device'
+    KBIO_DEV_MPG = 'MPG device'
+    KBIO_DEV_BISTAT = 'BISTAT device'
+    KBIO_DEV_MCS_200 = 'MCS-200 device'
+    KBIO_DEV_VMP3 = 'VMP3 device'
+    KBIO_DEV_VSP = 'VSP device'
+    KBIO_DEV_HCP803 = 'HCP-803 device'
+    KBIO_DEV_EPP400 = 'EPP-400 device'
+    KBIO_DEV_EPP4000 = 'EPP-4000 device'
+    KBIO_DEV_BISTAT2 = 'BISTAT 2 device'
+    KBIO_DEV_FCT150S = 'FCT-150S device'
+    KBIO_DEV_VMP300 = 'VMP-300 device'
+    KBIO_DEV_SP50 = 'SP-50 device'
+    KBIO_DEV_SP150 = 'SP-150 device'
+    KBIO_DEV_FCT50S = 'FCT-50S device'
+    KBIO_DEV_SP300 = 'SP300 device'
+    KBIO_DEV_CLB500 = 'CLB-500 device'
+    KBIO_DEV_HCP1005 = 'HCP-1005 device'
+    KBIO_DEV_CLB2000 = 'CLB-2000 device'
+    KBIO_DEV_VSP300 = 'VSP-300 device'
+    KBIO_DEV_SP200 = 'SP-200 device'
+    KBIO_DEV_MPG2 = 'MPG2 device'
+    KBIO_DEV_ND1 = 'RESERVED'
+    KBIO_DEV_ND2 = 'RESERVED'
+    KBIO_DEV_ND3 = 'RESERVED'
+    KBIO_DEV_ND4 = 'RESERVED'
+    KBIO_DEV_SP240 = 'SP-240 device'
+    KBIO_DEV_MPG205 = 'MPG-205 (VMP3)'
+    KBIO_DEV_MPG210 = 'MPG-210 (VMP3)'
+    KBIO_DEV_MPG220 = 'MPG-220 (VMP3)'
+    KBIO_DEV_MPG240 = 'MPG-240 (VMP3)'
+    KBIO_DEV_UNKNOWN = 'Unknown device'
+
+    
 
 class IRange( Enum ):
     """
@@ -176,7 +255,7 @@ class ParameterType( Enum ):
 
 # ## Structs
 
-# In[ ]:
+# In[3]:
 
 
 # Device Info Structure
@@ -294,7 +373,7 @@ class DataInfo( c.Structure ):
 
 # ## DLL Methods
 
-# In[7]:
+# In[4]:
 
 
 #--- init ---
@@ -411,7 +490,7 @@ for method in methods:
 
 # ### No Communication
 
-# In[ ]:
+# In[6]:
 
 
 def create_parameter( name, value, index = 0, kind = None ):
@@ -419,7 +498,7 @@ def create_parameter( name, value, index = 0, kind = None ):
     Factory to create an EccParam structure.
     
     :param name: Paramter name.
-    :param value: Value fo the parameter. 
+    :param value: Value of the parameter. 
         The kind is interpreted to be a bool, integer, or single (float),
         unless the kind parameter is passed.
     :param index: Parameter index. [Default: 0]
@@ -596,7 +675,7 @@ def convert_numeric( num ):
 
 # ### Synchronous
 
-# In[ ]:
+# In[7]:
 
 
 def connect( address, timeout = 5 ):
@@ -651,7 +730,7 @@ def is_connected( idn ):
     idn = c.c_int32( idn )
     
     try:
-        logging.debug( '[easy-biologic] Checking connection fo device {}.'.format( idn.value ) )
+        logging.debug( '[easy-biologic] Checking connection of device {}.'.format( idn.value ) )
         validate( 
             BL_TestConnection( idn )
         )
@@ -962,7 +1041,7 @@ def get_data( idn, ch ):
 
 # ### Asynchronous
 
-# In[ ]:
+# In[8]:
 
 
 async def connect_async( address, timeout = 5 ):
@@ -1325,7 +1404,7 @@ async def get_data_async( idn, ch ):
 
 # ## Helper Functions
 
-# In[ ]:
+# In[9]:
 
 
 def validate( err ):
@@ -1393,6 +1472,49 @@ def technique_file( technique, device = None ):
 
 
 # # Work
+
+# In[21]:
+
+
+def cnct( address, timeout = 5 ):
+    """
+    Connect to the device at the given address.
+    
+    :param address: Address of the device.
+    :param timout: Timout in seconds. [Default: 5]
+    :returns: A tuple of ( id, info ), where id is the connection id, 
+        and info is a DeviceInfo structure.
+    """
+    address = c.create_string_buffer( address.encode( 'utf-8' ) )
+    timeout = c.c_uint8( timeout )
+    idn     = c.c_int32()
+    info    = DeviceInfo()
+    
+    logging.debug( '[easy-biologic] Connecting to device {}.'.format( address.value ) )
+    err = BL_Connect(
+        c.byref( address ),
+        timeout,
+        c.byref( idn ),
+        c.byref( info )
+    )
+    print( address.value, timeout.value, idn.value, info )
+    validate( err )
+    logging.debug( '[easy-biologic] Conneced to device {}.'.format( address.value ) )
+    
+    return ( idn.value, info )
+
+
+# In[22]:
+
+
+( idn, info ) = cnct( '128.178.16.136', 30 )
+
+
+# In[23]:
+
+
+arch
+
 
 # In[ ]:
 
