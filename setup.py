@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 import setuptools
 
 with open("README.md", "r") as fh:
@@ -13,7 +12,7 @@ project_urls = {
 
 setuptools.setup(
     name = "easy-biologic",
-    version = "0.0.7",
+    version = "0.0.8",
     author = "Brian Carlsen",
     author_email = "carlsen.bri@gmail.com",
     description = "Controller class for communicating with BioLogic devices.",
@@ -35,34 +34,4 @@ setuptools.setup(
             'techniques/*'
         ]
     }
-=======
-import setuptools
-
-with open("README.md", "r") as fh:
-    long_description = fh.read()
-
-setuptools.setup(
-    name="easy-biologic",
-    version="0.0.6",
-    author="Brian Carlsen",
-    author_email="carlsen.bri@gmail.com",
-    description="Controller class for communicating with BioLogic devices.",
-    long_description=long_description,
-    long_description_content_type="text/markdown",
-    keywords=[ 'biologic' ],
-    url="",
-    packages=setuptools.find_packages(),
-    classifiers=[
-        "Programming Language :: Python :: 3",
-        "License :: OSI Approved :: MIT License",
-        "Operating System :: OS Independent",
-        "Development Status :: 3 - Alpha"
-    ],
-    install_requires=[],
-    package_data={
-        'easy_biologic': [
-            'techniques/*'
-        ]
-    }
->>>>>>> dev2
 )

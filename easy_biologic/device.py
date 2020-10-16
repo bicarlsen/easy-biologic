@@ -22,7 +22,7 @@ from .lib import ec_lib  as ecl
 
 # # Biologic Device
 
-# In[ ]:
+# In[2]:
 
 
 TechParams = namedtuple( 'TechParams', [
@@ -48,16 +48,22 @@ class BiologicDevice:
     def __init__( 
         self,
         address,
-        timeout = 5
+        timeout = 5,
+        populate_info = True
     ):
         """
         :param address: The address of the device to connect to.
         :param timeout: Timeout in seconds. [Defualt: 5]
+        :param populate_info: Run an initial #populate_info. [Default: True]
         """
         self.__address = address
         self.timeout = timeout
         
         self.__init_variables()
+        
+        self.__info = None
+        if populate_info:
+            self.populate_info()
         
         
     def __del__( self ):
@@ -86,8 +92,12 @@ class BiologicDevice:
     def kind( self ):
         """
         :returns: Device model.
-        :raises: RuntimeError if no device is connected at the connection string.
+        :raises: RuntimeError if the device has not been connected.
         """
+        if self.info is None:
+            # Device has not yet been connected
+            raise RuntimeError( 'Device must have been connected before retrieving info.' )
+            
         return ecl.DeviceCodes( self.info.DeviceCode )
     
     
@@ -182,16 +192,34 @@ class BiologicDevice:
         self.__init_variables() # reset vairables
         
         
+    def populate_info( self ):
+        """
+        Connects then disconnects from the device in order to populate info.
+        """
+        self.connect()
+        self.disconnect()
+        
+        
     def is_connected( self ):
         """
         Returns if the device is conencted or not.
         
         :returns: Boolean descirbing the state of connection.
         """
-        if self.idn is None:
+        if not self.idn:
             return False
         
-        return ecl.is_connected( self.idn )
+        connected = ecl.is_connected( self.idn )
+        
+        # update state
+        if not connected:
+            self.__init_variables()
+        
+        elif self.idn is None:
+            # connected but id is None
+            raise RuntimeError( 'Device is connected but does not have an id assigned.' )
+        
+        return connected
         
         
     def load_technique( 
@@ -211,7 +239,7 @@ class BiologicDevice:
         :param params: A dictionary of parameters to use.
         :param index: Index of the technique. [Default: 0]
         :param last: Whether this is the last technique. [Default: True]
-        :param types: List of dictonaries or Enums from technique_fields 
+        :param types: List of dictionaries or Enums from technique_fields 
             to cast parameters, or None if no casting is desired. 
             [Default: None]
         """
@@ -384,12 +412,11 @@ class BiologicDevice:
         Initializes instance variables.
         """
         self.__idn        = None # device identifier
-        self.__info       = None # device info
         self.__plugged    = None # list of plugged in channels
         self.__techniques = None #list of channel techniques
 
 
-# In[ ]:
+# In[8]:
 
 
 class BiologicDeviceAsync:
@@ -397,19 +424,25 @@ class BiologicDeviceAsync:
     Represents a Biologic Device
     """
     
-    def __init__( 
+    async def __init__( 
         self,
         address,
-        timeout = 5
+        timeout = 5,
+        populate_info = True
     ):
         """
         :param address: The address of the device to connect to.
         :param timeout: Timeout in seconds. [Defualt: 5]
+        :param populate_info: Run an initial #populate_info. [Default: True]
         """
         self.__address = address
         self.timeout = timeout
         
         self.__init_variables()
+        
+        self.__info = None
+        if populate_info:
+            await self.populate_info()
         
         
     def __del__( self ):
@@ -539,13 +572,21 @@ class BiologicDeviceAsync:
         self.__init_variables() # reset vairables
         
         
+    async def populate_info( self ):
+        """
+        Connects then disconnects from the device in order to populate info.
+        """
+        await self.connect()
+        await self.disconnect()
+        
+        
     async def is_connected( self ):
         """
         Returns if the device is conencted or not.
         
         :returns: Boolean descirbing the state of connection.
         """
-        if self.idn is None:
+        if not self.idn:
             return False
         
         return await ecl.is_connected_async( self.idn )
@@ -741,12 +782,23 @@ class BiologicDeviceAsync:
         Initializes instance variables.
         """
         self.__idn        = None # device identifier
-        self.__info       = None # device info
         self.__plugged    = None # list of plugged in channels
         self.__techniques = None #list of channel techniques
 
 
 # # Work
+
+# In[5]:
+
+
+# bld = BiologicDevice(  '192.168.1.2' )
+
+
+# In[6]:
+
+
+# bld.connect()
+
 
 # In[ ]:
 

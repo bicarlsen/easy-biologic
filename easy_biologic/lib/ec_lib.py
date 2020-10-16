@@ -43,6 +43,12 @@
 # **raise_exception( err ):** Raises an exception based on a calls error code. 
 # 
 # #### Enum Classes
+# **DeviceCodes:** Device code for identifying model. <br>
+# Values: [ KBIO_DEV_VMP, KBIO_DEV_VMP2, KBIO_DEV_MPG, KBIO_DEV_BISTAT, KBIO_DEV_MCS_200, KBIO_DEV_VMP3, KBIO_DEV_VSP, KBIO_DEV_HCP803, KBIO_DEV_EPP400, KBIO_DEV_EPP4000, KBIO_DEV_BISTAT2, KBIO_DEV_FCT150S, KBIO_DEV_VMP300, KBIO_DEV_SP50, KBIO_DEV_SP150, KBIO_DEV_FCT50S, KBIO_DEV_SP300, KBIO_DEV_CLB500, KBIO_DEV_HCP1005, KBIO_DEV_CLB2000, KBIO_DEV_VSP300, KBIO_DEV_SP200, KBIO_DEV_MPG2, KBIO_DEV_ND1, KBIO_DEV_ND2, KBIO_DEV_ND3, KBIO_DEV_ND4, KBIO_DEV_SP240, KBIO_DEV_MPG205, KBIO_DEV_MPG210, KBIO_DEV_MPG220, KBIO_DEV_MPG240, KBIO_DEV_UNKNOWN ]
+# 
+# **DeviceCodeDescriptions:** Description of DeviceCodes. <br>
+# Values: [KBIO_DEV_VMP, KBIO_DEV_VMP2, KBIO_DEV_MPG, KBIO_DEV_BISTAT, KBIO_DEV_MCS_200, KBIO_DEV_VMP3, KBIO_DEV_VSP, KBIO_DEV_HCP803, KBIO_DEV_EPP400, KBIO_DEV_EPP4000, KBIO_DEV_BISTAT2, KBIO_DEV_FCT150S, KBIO_DEV_VMP300, KBIO_DEV_SP50, KBIO_DEV_SP150, KBIO_DEV_FCT50S, KBIO_DEV_SP300, KBIO_DEV_CLB500, KBIO_DEV_HCP1005, KBIO_DEV_CLB2000, KBIO_DEV_VSP300, KBIO_DEV_SP200, KBIO_DEV_MPG2, KBIO_DEV_ND1, KBIO_DEV_ND2, KBIO_DEV_ND3, KBIO_DEV_ND4, KBIO_DEV_SP240, KBIO_DEV_MPG205, KBIO_DEV_MPG210, KBIO_DEV_MPG220, KBIO_DEV_MPG240, KBIO_DEV_UNKNOWN]
+# 
 # **IRange:** Current ranges. <br>
 # Values: [ p100, n1, n10, n100, u1, u10, u100, m1, m10, m100, a1, KEEP, BOOSTER, AUTO ]
 # 
@@ -81,7 +87,7 @@
 # **DataInfo:** Metadata of measured data. <br>
 # Fields: [ IRQskipped, NbRows, NbCols, TechniqueIndex, TechniqueID, processIndex, loop, StartTime, MuxPad ]
 
-# In[13]:
+# In[2]:
 
 
 # standard imports
@@ -98,7 +104,7 @@ from .ec_errors import EcError
 
 # ## Constants
 
-# In[2]:
+# In[3]:
 
 
 class DeviceCodes( Enum ):
@@ -320,6 +326,8 @@ class EccParams( c.Structure ):
     """
     Represents a list of technique parameters.
     """
+    _pack_ = 4
+    
     _fields_ = [
         ( 'len',     c.c_int32 ),
         ( 'pParams', c.POINTER( EccParam ) )
@@ -552,7 +560,7 @@ def combine_parameters( params ):
     """
     Creates an ECCParams list of parameters.
     
-    :param params: List of parameters to combine.
+    :param params: List of EccParam parameters to combine.
     :returns: EccParams structure.
     """
     num_params = len( params )
@@ -562,6 +570,8 @@ def combine_parameters( params ):
     params = EccParams()
     params.len = length
     params.pParams = c.cast( param_list, c.POINTER( EccParam ) )
+    
+    return params
 
 
 def create_parameters( params, index = 0, types = None ):
@@ -594,16 +604,18 @@ def create_parameters( params, index = 0, types = None ):
             # create parameter for each value
             param = create_parameter( name, value, index + idx )
             param_list.append( param )
+            
+    return combine_parameters( param_list )
         
-    num_params = len( param_list )
-    param_list = ( EccParam* num_params )( *param_list )
-    length = c.c_int32( num_params )
+    # num_params = len( param_list )
+    # param_list = ( EccParam* num_params )( *param_list )
+    # length = c.c_int32( num_params )
     
-    params = EccParams()
-    params.len = length
-    params.pParams = c.cast( param_list, c.POINTER( EccParam ) )
+    # params = EccParams()
+    # params.len = length
+    # params.pParams = c.cast( param_list, c.POINTER( EccParam ) )
     
-    return params
+    # return params
 
 
 def cast_parameters( parameters, types):
@@ -793,6 +805,7 @@ def init_channels( idn, chs, force_reload = False, bin_file = None, xlx_file = N
         )
     
     validate( err )
+    return results
 
     
 def is_channel_connected( idn, ch ):
@@ -802,7 +815,7 @@ def is_channel_connected( idn, ch ):
     logging.debug( '[easy-biologic] Checking channel {}\'s connection.'.format( ch.value ) )
     conn = BL_IsChannelPlugged( idn, ch )
     
-    return conn.value
+    return conn
     
 
 def get_channels( idn, size = 16 ):
@@ -1458,7 +1471,7 @@ def technique_file( technique, device = None ):
     
     if (
         device is not None and
-        device.upper() == 'SP-300' and 
+        device is DeviceCodes.KBIO_DEV_SP300 and 
         not technique.endswith( sp300_mod )
     ):
         # modify technqiues for SP-300 devices
@@ -1472,49 +1485,6 @@ def technique_file( technique, device = None ):
 
 
 # # Work
-
-# In[21]:
-
-
-def cnct( address, timeout = 5 ):
-    """
-    Connect to the device at the given address.
-    
-    :param address: Address of the device.
-    :param timout: Timout in seconds. [Default: 5]
-    :returns: A tuple of ( id, info ), where id is the connection id, 
-        and info is a DeviceInfo structure.
-    """
-    address = c.create_string_buffer( address.encode( 'utf-8' ) )
-    timeout = c.c_uint8( timeout )
-    idn     = c.c_int32()
-    info    = DeviceInfo()
-    
-    logging.debug( '[easy-biologic] Connecting to device {}.'.format( address.value ) )
-    err = BL_Connect(
-        c.byref( address ),
-        timeout,
-        c.byref( idn ),
-        c.byref( info )
-    )
-    print( address.value, timeout.value, idn.value, info )
-    validate( err )
-    logging.debug( '[easy-biologic] Conneced to device {}.'.format( address.value ) )
-    
-    return ( idn.value, info )
-
-
-# In[22]:
-
-
-( idn, info ) = cnct( '128.178.16.136', 30 )
-
-
-# In[23]:
-
-
-arch
-
 
 # In[ ]:
 

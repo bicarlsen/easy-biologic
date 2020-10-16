@@ -12,7 +12,7 @@
 # # Device
 # Represents the descriptors of a device.
 
-# In[44]:
+# In[1]:
 
 
 import os
@@ -22,7 +22,7 @@ import platform
 import pkg_resources
 
 
-# In[45]:
+# In[2]:
 
 
 class Device():
@@ -81,7 +81,7 @@ class Device():
             return self.address
 
 
-# In[48]:
+# In[3]:
 
 
 #--- init ---
@@ -168,18 +168,7 @@ def find_devices( connection = None ):
     # idn is filled with every character null terminated
     # so must remove evey other character
     idn_len = range( len ( idn ) ) 
-    dev_keys = [
-        'connection',
-        'address',
-        'gateway',
-        'netmask', 
-        'mac', 
-        'idn', 
-        'kind', 
-        'sn',
-        'name'
-    ]
-
+    
     # check if odd positions are null terminators
     char_term = [ 
         ( idn[ i ] == b'\x00' ) 
@@ -198,6 +187,18 @@ def find_devices( connection = None ):
     ids = ids[ :-1 ] # final element is null padding
     
     # create devices
+    dev_keys = [
+        'connection',
+        'address',
+        'gateway',
+        'netmask', 
+        'mac', 
+        'idn', 
+        'kind', 
+        'sn',
+        'name'
+    ]
+    
     devices = []
     for idd in ids:
         desc = idd.split( '$' ) # descriptors are separated by $
@@ -255,3 +256,9 @@ def raise_exception( err ):
 
 
 # # Work
+
+# In[ ]:
+
+
+
+
