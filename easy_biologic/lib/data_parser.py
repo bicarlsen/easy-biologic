@@ -8,18 +8,18 @@
 # Parses data received from a technique and contains technique fields for different device types.
 # 
 # ### Methods
-# **parse( datam info, fields = None ):** Parses data received from a technique.
+# **parse( data, info, fields = None, device = None ):** Parses data received from a technique.
 # 
 # **calculate_time( t_high, t_low, data_info, current_value ):** Calculates elapsed time from time data.
 # 
 # ### Classes
 # **VMP3_Fields:** Contains technqiue fields for VMP3 devices. 
 # (Not all techniques are implemented)
-# Properties: [ OCV, CP, CA, CPLIMIT, CALIMIT, CV ]
+# Properties: [ OCV, CP, CA, CPLIMIT, CALIMIT, CV, PEIS ]
 # 
 # **SP300_Fields:** Contains technqiue fields for SP-300 devices. 
 # (Not all techniques are implemented)
-# Properties: [ OCV, CP, CA, CPLIMIT, CALIMIT, CV ]
+# Properties: [ OCV, CP, CA, CPLIMIT, CALIMIT, CV, PEIS ]
 
 # In[14]:
 
@@ -35,19 +35,36 @@ from . import ec_lib as ecl
 # In[ ]:
 
 
-def parse( data, info, fields = None ):
+def parse( data, info, fields = None, device = None ):
     """
     Parses data retrieved from a technique.
 
     :param data: Data to parse.
     :param info: DataInfo object representing metadata of the technqiue.
     :param fields: List of FieldInfo used to interpret the data.
-        If None, uses the technique ID to retrieve 
+        If None, uses the technique ID to retrieve.
+    :param device: BioLogic device. Necessary if fields are not defined.
     :returns: A list of namedtuples representing the data.
     """
     rows = info.NbRows
     cols = info.NbCols
     technique = ecl.TechniqueId( info.TechniqueID )
+    
+    if fields is None and device is not None:
+        fields = (
+            SP300_Fields[ techinque ]
+            if device.kind is ecl.DeviceCodes.KBIO_DEV_SP300
+            else VMP3_Fields[ technique ]
+        )
+        
+    if fields is None and device is None:
+        raise ValueError( 'Both fields and device not defined.' )
+
+        
+    if isinstance( fields, tuple ):
+        fields = fields[ info.ProcessIndex ]
+    
+        
     
     if cols is 0:
         raise RuntimeError( 'No columns in data.' )
@@ -142,6 +159,32 @@ class VMP3_Fields():
         FI( 'voltage', SINGLE ),
         FI( 'cycle',   INT32  )
     ]
+    
+    PEIS = (
+        [# process == 0
+            FI( 't_high',  INT32  ),
+            FI( 't_low',   INT32  ),
+            FI( 'voltage', SINGLE ),
+            FI( 'current', SINGLE )
+        ],
+        [# process == 1
+            FI( 'frequency',           SINGLE ),
+            FI( 'abs_voltage',         SINGLE ),
+            FI( 'abs_current',         SINGLE ),
+            FI( 'impendance_phase',    SINGLE ),
+            FI( 'voltage',             SINGLE ),
+            FI( 'current',             SINGLE ),
+            FI( 'empty1',              INT32  ),
+            FI( 'abs_voltage_ce',      SINGLE ),
+            FI( 'abs_current_ce',      SINGLE ),
+            FI( 'impendance_ce_phase', SINGLE ),
+            FI( 'voltage_ce',          SINGLE ),
+            FI( 'empty2',              INT32  ),
+            FI( 'empty3',              INT32  ),
+            FI( 'time',                SINGLE ),
+            FI( 'current_range',       SINGLE )
+        ]
+    )
 
 
 # In[34]:
@@ -183,4 +226,29 @@ class SP300_Fields():
         FI( 'voltage', SINGLE ),
         FI( 'cycle',   INT32  )
     ]
+    
+    PEIS = (
+        [# process == 0
+            FI( 't_high',  INT32  ),
+            FI( 't_low',   INT32  ),
+            FI( 'voltage', SINGLE ),
+            FI( 'current', SINGLE )
+        ],
+        [# process == 1
+            FI( 'frequency',           SINGLE ),
+            FI( 'abs_voltage',         SINGLE ),
+            FI( 'abs_current',         SINGLE ),
+            FI( 'impendance_phase',    SINGLE ),
+            FI( 'voltage',             SINGLE ),
+            FI( 'current',             SINGLE ),
+            FI( 'empty1',              INT32  ),
+            FI( 'abs_voltage_ce',      SINGLE ),
+            FI( 'abs_current_ce',      SINGLE ),
+            FI( 'impendance_ce_phase', SINGLE ),
+            FI( 'voltage_ce',          SINGLE ),
+            FI( 'empty2',              INT32  ),
+            FI( 'empty3',              INT32  ),
+            FI( 'time',                SINGLE )
+        ]
+    ) 
 

@@ -102,6 +102,41 @@ Represents a program to be run on a device channel.
 ### Base Programs
 Contains basic implementations of BiologicPrograms.
 
+#### PEIS
+###### Params
++ **voltage:** Initial potential in Volts.
+
++ **amplitude_voltage:** Sinus amplitude in Volts.
+
++ **initial_frequency**: Initial frequency in Hertz.
+       
++ **final_frequency:** Final frequency in Hertz.
+
++ **frequency_number:** Number of frequencies.
+
++ **duration:** Overall duration in seconds.
+
++ **vs_initial:** If step is vs. initial or previous. 
+[Default: False]
+
++ **time_interval:** Maximum time interval between points in seconds. 
+[Default: 1]
+
++ **current_interval:** Maximum time interval between points in Amps. 
+[Default: 0.001]
+
++ **sweep:** Defines whether the spacing between frequencies is logarithmic ('log') or linear ('lin'). 
+[Default: 'log'] 
+
++ **repeat:** Number of times to repeat the measurement and average the valuesfor each frequency. 
+[Default: 1]
+
++ **correction:** Drift correction. 
+[Default: False]
+
++ **wait:** Adds a delay before the measurement at each frequency. The delayis expressed as a fraction of the period. 
+[Default: 0]
+
 #### OCV
 ##### Params
 + **time:** Run time in seconds.
@@ -159,7 +194,7 @@ Performs a JV scan.
 
 ##### Params
 + **start:** Start voltage. 
-[ Defualt: 0 ]
+[ Default: 0 ]
 
 + **end:** End voltage.
 
@@ -250,13 +285,13 @@ Contains methods converting the `BL_*` DLL functions for use, enumeration classe
 
 + **disconnect( idn ):** Disconnects given device.
 
-+ **is_connected( address ):** Checks if teh device at the given address is connected.
++ **is_connected( address ):** Checks if the device at the given address is connected.
 
 + **is_channel_connected( idn, ch ):** Checks whether the given device channel is connected.
 
 + **get_channels( idn, length = 16 ):** Returns a list of booleans of whether the cahnnel at the index exists.
 
-+ **channel_info( idn, ch ):** Returns a ChannlInfo struct of the given device channel.
++ **channel_info( idn, ch ):** Returns a ChannelInfo struct of the given device channel.
 
 + **load_technique( idn, ch, technique, params, first = True, last = True, verbose = False ):** 
 Loads the technique with parameter on the given device channel.
@@ -330,18 +365,18 @@ Fields: [ IRQskipped, NbRows, NbCols, TechniqueIndex, TechniqueID, processIndex,
 Parses data received from a technique and contains technique fields for different device types.
 
 #### Methods
-+ **parse( datam info, fields = None ):** Parses data received from a technique.
++ **parse( data, info, fields = None, device = None ):** Parses data received from a technique.
 
 + **calculate_time( t_high, t_low, data_info, current_value ):** Calculates elapsed time from time data.
 
 #### Classes
 + **VMP3_Fields:** Contains technqiue fields for VMP3 devices. 
 (Not all techniques are implemented)
-Properties: [ OCV, CP, CA, CPLIMIT, CALIMIT, CV ]
+Properties: [ OCV, CP, CA, CPLIMIT, CALIMIT, CV, PEIS ]
 
 + **SP300_Fields:** Contains technqiue fields for SP-300 devices. 
 (Not all techniques are implemented)
-Properties: [ OCV, CP, CA, CPLIMIT, CALIMIT, CV ]
+Properties: [ OCV, CP, CA, CPLIMIT, CALIMIT, CV, PEIS ]
 
 ### EC Find
 Implements the BL Find DLL.

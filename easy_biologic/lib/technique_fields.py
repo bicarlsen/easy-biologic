@@ -99,3 +99,25 @@ class CPLIMIT( Enum ):
     Exit_Cond         = int
     N_Cycles          = int
 
+
+# In[ ]:
+
+
+class PEIS (Enum):
+    vs_initial           = bool
+    vs_final             = bool
+    Initial_Voltage_step = float 
+    Final_Voltage_step   = float
+    Duration_step        = float 
+    Step_number          = int
+    Record_every_dT      = float
+    Record_every_dI      = float
+    Final_frequency      = float
+    Initial_frequency    = float
+    sweep                = bool
+    Amplitude_Voltage    = float 
+    Frequency_number     = int
+    Average_N_times      = int
+    Correction           = bool
+    Wait_for_steady      = float
+

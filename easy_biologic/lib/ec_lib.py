@@ -34,9 +34,9 @@
 # 
 # **start_channels( idn, ch ):** Starts the given device channels.
 # 
-# **srop_channel( idn, ch ):** Stops the given device channel.
+# **stop_channel( idn, ch ):** Stops the given device channel.
 # 
-# **srop_channels( idn, chs ):** Stops the given device channels.
+# **stop_channels( idn, chs ):** Stops the given device channels.
 # 
 # **get_values( idn, ch ):** Gets the current values and states of the given device channel.
 # 
@@ -87,7 +87,7 @@
 # **DataInfo:** Metadata of measured data. <br>
 # Fields: [ IRQskipped, NbRows, NbCols, TechniqueIndex, TechniqueID, processIndex, loop, StartTime, MuxPad ]
 
-# In[2]:
+# In[1]:
 
 
 # standard imports
@@ -104,7 +104,7 @@ from .ec_errors import EcError
 
 # ## Constants
 
-# In[3]:
+# In[2]:
 
 
 class DeviceCodes( Enum ):
@@ -607,15 +607,15 @@ def create_parameters( params, index = 0, types = None ):
             
     return combine_parameters( param_list )
         
-    # num_params = len( param_list )
-    # param_list = ( EccParam* num_params )( *param_list )
-    # length = c.c_int32( num_params )
+#     num_params = len( param_list )
+#     param_list = ( EccParam* num_params )( *param_list )
+#     length = c.c_int32( num_params )
     
-    # params = EccParams()
-    # params.len = length
-    # params.pParams = c.cast( param_list, c.POINTER( EccParam ) )
+#     params = EccParams()
+#     params.len = length
+#     params.pParams = c.cast( param_list, c.POINTER( EccParam ) )
     
-    # return params
+#     return params
 
 
 def cast_parameters( parameters, types):
@@ -765,6 +765,7 @@ def init_channels( idn, chs, force_reload = False, bin_file = None, xlx_file = N
         [Default: None]
     :param xlx_file: xilinx file, or None to use default.
         [Default: None]
+    :returns: Results array with error codes for each channel.
     """
     length = max( chs ) + 1
     results = ( c.c_int32* length )()
@@ -805,10 +806,16 @@ def init_channels( idn, chs, force_reload = False, bin_file = None, xlx_file = N
         )
     
     validate( err )
+    
     return results
 
     
 def is_channel_connected( idn, ch ):
+    """
+    :param idn: Id of the device.
+    :param ch: Channel to check.
+    :returns: Whether the channel is connected or not.
+    """
     idn = c.c_int32( idn )
     ch = c.c_uint8( ch )
     
@@ -1029,6 +1036,7 @@ def get_values( idn, ch ):
 def get_data( idn, ch ):
     """
     Gets data from the given device channel.
+    Pulls data from the buffer and clears it.
     
     :param idn: Device identifier.
     :param ch: Channel.
@@ -1392,6 +1400,7 @@ async def get_values_async( idn, ch ):
 async def get_data_async( idn, ch ):
     """
     Gets data from the given device channel.
+    Pulls data from the buffer and clears it.
     
     :param idn: Device identifier.
     :param ch: Channel.

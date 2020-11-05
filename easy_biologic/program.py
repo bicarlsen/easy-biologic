@@ -347,8 +347,9 @@ class BiologicProgram( ABC ):
                     for segment in ch_data
                     for datum in segment.data
                 ]
-        
     
+        
+        
     async def _retrieve_data_segment( self, channel ):
         """
         @async

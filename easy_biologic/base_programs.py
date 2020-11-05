@@ -4,6 +4,35 @@
 # # Base Programs
 # Creates basic programs implementing BiologicProgram.
 
+# ## PEIS
+# ### Params
+# **voltage:** Initial potential in Volts.
+# 
+# **amplitude_voltage:** Sinus amplitude in Volts.
+# 
+# **initial_frequency**: Initial frequency in Hertz.
+#        
+# **final_frequency:** Final frequency in Hertz.
+# 
+# **frequency_number:** Number of frequencies.
+# 
+# **duration:** Overall duration in seconds.
+# 
+# **vs_initial:** If step is vs. initial or previous. [Default: False]
+# 
+# **time_interval:** Maximum time interval between points in seconds. [Default: 1]
+# 
+# **current_interval:** Maximum time interval between points in Amps. [Default: 0.001]
+# 
+# **sweep:** Defines whether the spacing between frequencies is logarithmic ('log') or linear ('lin'). [Default: 'log'] 
+# 
+# **repeat:** Number of times to repeat the measurement and average the valuesfor each frequency. [Default: 1]
+# 
+# **correction:** Drift correction. [Default: False]
+# 
+# **wait:** Adds a delay before the measurement at each frequency. The delayis expressed as a fraction of the period. [Default: 0]
+# 
+# 
 # ## OCV
 # ### Params
 # **time:** Run time in seconds.
@@ -362,7 +391,193 @@ def map_params( key_map, params, by_channel = True, keep = False, inplace = Fals
     return params
 
 
-# In[1]:
+# In[ ]:
+
+
+class PEIS( BiologicProgram ):
+    '''
+    Runs Potentio Electrochemical Impedance Spectroscopy technique.
+    '''
+    
+    def __init__(
+        self,
+        device,
+        params,
+        channels    = None,
+        autoconnect = True,
+        barrier     = None,
+        threaded    = False
+    ):
+        """
+        Params are
+        voltage: Initial potential in Volts.
+        amplitude_voltage: Sinus amplitude in Volts.
+        initial_frequency: Initial frequency in Hertz.
+        final_frequency: Final frequency in Hertz.
+        frequency_number: Number of frequencies.
+        duration: Overall duration in seconds.
+        vs_initial: If step is vs. initial or previous. 
+            [Default: False]
+        time_interval: Maximum time interval between points in seconds.
+            [Default: 1]
+        current_interval: Maximum time interval between points in Amps.
+            [Default: 0.001]
+        sweep: Defines whether the spacing between frequencies is logarithmic 
+            ('log') or linear ('lin'). [Default: 'log'] 
+        repeat: Number of times to repeat the measurement and average the values
+            for each frequency. [Default: 1]
+        correction: Drift correction. [Default: False]
+        wait: Adds a delay before the measurement at each frequency. The delay
+            is expressed as a fraction of the period. [Default: 0]
+        """
+        # set sweep to false if spacing is logarithmic
+        if 'sweep' in params:
+            if params.sweep is 'log':
+                params.sweep = False 
+
+            elif params.sweep is 'lin':
+                params.sweep = True
+
+            else: 
+                raise ValueError( 'Invalid sweep parameter' )
+        
+        defaults = {
+            'vs_initial':       False,
+            'time_interval':    1,
+            'current_interval': 0.001,
+            'sweep':            False,
+            'repeat':           1,
+            'correction':       False,
+            'wait':             0            
+        }
+        
+        params = set_defaults( params, defaults, channels )
+        super().__init__(
+            device,
+            params,
+            channels    = channels,
+            autoconnect = autoconnect,
+            barrier     = barrier,
+            threaded    = threaded
+        )
+        
+        self._fields = namedtuple( 'PEIS_datum', [
+            'process',
+            'time', 
+            'voltage', 
+            'current', 
+            'abs_voltage',
+            'abs_current',
+            'impendance_phase',
+            'voltage_ce',
+            'abs_voltage_ce',
+            'abs_current_ce',
+            'impendance_ce_phase',
+            'frequency'
+        ] )
+        self.field_titles = [
+            'Process',
+            'Time [s]',
+            'Voltage [V]',
+            'Current [A]',
+            'abs( Voltage ) [V]',
+            'abs( Current ) [A]',
+            'Impendance phase',
+            'Voltage_ce [V]',
+            'abs( Voltage_ce ) [V]',
+            'abs( Current_ce ) [A]',
+            'Impendance_ce phase',
+            'Frequency [Hz]'
+            ]
+    
+        self._techniques = [ 'peis' ]
+    
+        self._parameter_types = tfs.PEIS   
+    
+    
+    def run( self, retrieve_data = True ):
+        """
+        :param retrieve_data: Automatically retrieve and disconenct from device.
+            [Default: True]
+        """
+        params = {}
+        for ch, ch_params in self.params.items():
+            params[ ch ] = {
+                'vs_initial':           ch_params[ 'vs_initial' ],
+                'vs_final':             ch_params[ 'vs_initial' ],
+                'Initial_Voltage_step': ch_params[ 'voltage' ],
+                'Final_Voltage_step':   ch_params[ 'voltage' ],
+                'Duration_step':        ch_params[ 'duration' ],
+                'Step_number':          0,
+                'Record_every_dT':      ch_params[ 'time_interval' ],
+                'Record_every_dI':      ch_params[ 'current_interval' ],
+                'Final_frequency':      ch_params[ 'final_frequency' ],
+                'Initial_frequency':    ch_params[ 'initial_frequency' ],
+                'sweep':                ch_params[ 'sweep' ], 
+                'Amplitude_Voltage':    ch_params[ 'amplitude_voltage' ],
+                'Frequency_number':     ch_params[ 'frequency_number' ],
+                'Average_N_times':      ch_params[ 'repeat' ],
+                'Correction':           ch_params[ 'correction' ],
+                'Wait_for_steady':      ch_params[ 'wait' ]
+            }
+
+        if retrieve_data:
+            def fields( datum, segment ): 
+                """
+                Define fields for _run function.
+                """
+                if segment.info.ProcessIndex is 0:
+                    f = (
+                        segment.info.ProcessIndex,
+                        dp.calculate_time(
+                            datum.t_high,
+                            datum.t_low,
+                            segment.info,
+                            segment.values
+                        ),
+                        datum.voltage,
+                        datum.current,
+                        '',
+                        '',
+                        '',
+                        '',
+                        '',
+                        '',
+                        '',
+                        ''
+                    )  
+                elif segment.info.ProcessIndex is 1:
+                    f = (
+                        segment.info.ProcessIndex,
+                        datum.time,
+                        datum.voltage,
+                        datum.current,
+                        datum.abs_voltage,
+                        datum.abs_current,
+                        datum.impendance_phase,
+                        datum.voltage_ce,
+                        datum.abs_voltage_ce,
+                        datum.abs_current_ce,
+                        datum.impendance_ce_phase,
+                        datum.frequency
+                    )
+                else:
+                    raise valueError( 'Invalid ProcessIndex ({})'.format( segment.info.ProcessIndex ) )
+                
+                return f
+
+            
+        self._data_fields = (
+            dp.SP300_Fields.PEIS
+            if self.device.kind is ecl.DeviceCodes.KBIO_DEV_SP300
+            else dp.VMP3_Fields.PEIS
+        )
+        
+        # run technique
+        data = self._run( 'peis', params, fields )
+
+
+# In[ ]:
 
 
 class OCV( BiologicProgram ):
@@ -406,7 +621,7 @@ class OCV( BiologicProgram ):
         self.field_titles = [ 'Time [s]', 'Voltage [V]' ]
         self._data_fields = (
             dp.SP300_Fields.OCV
-            if self.device.kind is 'SP-300'
+            if self.device.kind is ecl.DeviceCodes.KBIO_DEV_SP300
             else dp.VMP3_Fields.OCV
         )
         self._parameter_types = tfs.OCV
@@ -487,7 +702,7 @@ class CA( BiologicProgram ):
             threaded    = threaded
         )
         
-        self._technqiues = [ 'ca' ]
+        self._techniques = [ 'ca' ]
         self._fields = namedtuple( 'CA_Datum', [
             'time', 'voltage', 'current', 'power', 'cycle'
         ] )
@@ -502,7 +717,7 @@ class CA( BiologicProgram ):
         
         self._data_fields = (
             dp.SP300_Fields.CA
-            if self.device.kind is 'SP-300'
+            if self.device.kind is ecl.DeviceCodes.KBIO_DEV_SP300
             else dp.VMP3_Fields.CA
         )
         self._parameter_types = tfs.CA
@@ -609,7 +824,7 @@ class CP( BiologicProgram ):
         defaults = {
             'vs_initial':       False,
             'time_interval':    1.0,
-            'current_interval': 1e-3
+            'voltage_interval': 1e-3
         }
         
         params = set_defaults( params, defaults, channels )
@@ -627,7 +842,7 @@ class CP( BiologicProgram ):
                 ch_params[ 'currents' ]
             )
         
-        self._technqiues = [ 'cp' ]
+        self._techniques = [ 'cp' ]
         self._fields = namedtuple( 'CP_Datum', [
             'time', 'voltage', 'current', 'power', 'cycle'
         ] )
@@ -642,7 +857,7 @@ class CP( BiologicProgram ):
         
         self._data_fields = (
             dp.SP300_Fields.CP
-            if self.device.kind is 'SP-300'
+            if self.device.kind is ecl.DeviceCodes.KBIO_DEV_SP300
             else dp.VMP3_Fields.CP
         )
         self._parameter_types = tfs.CP
@@ -825,7 +1040,7 @@ class CALimit( BiologicProgram ):
             threaded    = threaded
         )
         
-        self._technqiues = [ 'calimit' ]
+        self._techniques = [ 'calimit' ]
         self._fields = namedtuple( 'CALimit_Datum', [
             'time', 'voltage', 'current', 'power', 'cycle'
         ] )
@@ -840,7 +1055,7 @@ class CALimit( BiologicProgram ):
         
         self._data_fields = (
             dp.SP300_Fields.CALIMIT
-            if self.device.kind is 'SP-300'
+            if self.device.kind is ecl.DeviceCodes.KBIO_DEV_SP300
             else dp.VMP3_Fields.CALIMIT
         )
         self._parameter_types = tfs.CALIMIT
@@ -949,7 +1164,7 @@ class CALimit( BiologicProgram ):
             )
 
 
-# In[1]:
+# In[ ]:
 
 
 class JV_Scan( BiologicProgram ):
@@ -1001,7 +1216,7 @@ class JV_Scan( BiologicProgram ):
         
         self._data_fields = (
             dp.SP300_Fields.CV
-            if self.device.kind is 'SP-300'
+            if self.device.kind is ecl.DeviceCodes.KBIO_DEV_SP300
             else dp.VMP3_Fields.CV
         )
         
@@ -1371,7 +1586,7 @@ class MPP_Tracking( CALimit ):
         }
 
 
-# In[1]:
+# In[ ]:
 
 
 class MPP( MPP_Tracking ):
@@ -1574,7 +1789,7 @@ class MPP( MPP_Tracking ):
         return v_mpp
 
 
-# In[1]:
+# In[ ]:
 
 
 class MPP_Cycles( MPP ):
