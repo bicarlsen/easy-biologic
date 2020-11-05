@@ -103,7 +103,7 @@ Represents a program to be run on a device channel.
 Contains basic implementations of BiologicPrograms.
 
 #### PEIS
-###### Params
+##### Params
 + **voltage:** Initial potential in Volts.
 
 + **amplitude_voltage:** Sinus amplitude in Volts.
