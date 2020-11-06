@@ -42,8 +42,12 @@ def parse( data, info, fields = None, device = None ):
     :param data: Data to parse.
     :param info: DataInfo object representing metadata of the technqiue.
     :param fields: List of FieldInfo used to interpret the data.
+<<<<<<< HEAD
         If None, uses the technique ID to retrieve.
     :param device: BioLogic device. Necessary if fields are not defined.
+=======
+        If None, uses the technique ID to retrieve 
+>>>>>>> dev
     :returns: A list of namedtuples representing the data.
     """
     rows = info.NbRows

@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+
 # coding: utf-8
 
 # # Biologic Programs
@@ -494,7 +494,7 @@ class BiologicProgram( ABC ):
                     for ch, ch_data in self.data.items():
                         if index < num_rows[ ch ]:
                             # valid row for channel
-                            row_data += ','.join( map( str, ch_data[ index ] ) ) + ','
+                            row_data += ','.join( map( self._datum_to_str, ch_data[ index ] ) ) + ','
                         
                         else:
                             # channel data exhausted, write placeholders
@@ -534,7 +534,7 @@ class BiologicProgram( ABC ):
             
             csv_data = ''
             for datum in ch_data:
-                csv_data += ','.join( map( str, datum ) )
+                csv_data += ','.join( map( self._datum_to_str, datum ) )
                 csv_data += '\n'
                                       
             try:
@@ -548,6 +548,22 @@ class BiologicProgram( ABC ):
 
             except Exception as err:
                 logging.warning( '[#_save_data_individual] CH{}: {}'.format( ch, err ) )
+                
+    
+    def _datum_to_str( self, datum ):
+        """
+        Casts data to string.
+        If datum is None, casts to empty string intead of 'None'.
+        
+        :param datum: Datum to cast.
+        :returns: Datum as a string.
+        """
+        if datum is None:
+            return ''
+        
+        # datum is not None
+        return str( datum )
+        
 
 
 # In[5]:

@@ -434,12 +434,12 @@ class OCV( BiologicProgram ):
         self.field_titles = [ 'Time [s]', 'Voltage [V]' ]
         self._data_fields = (
             dp.SP300_Fields.OCV
-            if self.device.kind is ecl.DeviceCodes.KBIO_DEV_SP300
-            else dp.VMP3_Fields.OCV
-        )
+            if self.device.kind is ecl.DeviceCodes.KBIO_DEV_SP300 else 
+            dp.VMP3_Fields.OCV   
+
         self._parameter_types = tfs.OCV
-        
-        
+
+            
     def run( self, retrieve_data = True ):
         """
         :param retrieve_data: Automatically retrieve and disconenct form device.
@@ -515,7 +515,7 @@ class CA( BiologicProgram ):
             threaded    = threaded
         )
         
-        self._techniques = [ 'ca' ]
+        self._technqiues = [ 'ca' ]
         self._fields = namedtuple( 'CA_Datum', [
             'time', 'voltage', 'current', 'power', 'cycle'
         ] )
@@ -631,7 +631,7 @@ class CP( BiologicProgram ):
             [Default: False]
         time_interval: Maximum time interval between points in seconds. 
             [Default: 1]
-        voltage_interval: Maximum votlage change between points in Volts. 
+        voltage_interval: Maximum voltge change between points in Volts. 
             [Default: 0.001]
         """
         defaults = {
