@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+
 # coding: utf-8
 
 # # Base Programs
@@ -362,7 +362,7 @@ def map_params( key_map, params, by_channel = True, keep = False, inplace = Fals
     return params
 
 
-# In[1]:
+# In[ ]:
 
 
 class OCV( BiologicProgram ):
@@ -406,9 +406,11 @@ class OCV( BiologicProgram ):
         self.field_titles = [ 'Time [s]', 'Voltage [V]' ]
         self._data_fields = (
             dp.SP300_Fields.OCV
-            if self.device.kind is 'SP-300'
-            else dp.VMP3_Fields.OCV
+            if self.device.kind is ecl.DeviceCodes.KBIO_DEV_SP300 else 
+            dp.VMP3_Fields.OCV   
         )
+        
+    
         self._parameter_types = tfs.OCV
         
         
@@ -502,7 +504,7 @@ class CA( BiologicProgram ):
         
         self._data_fields = (
             dp.SP300_Fields.CA
-            if self.device.kind is 'SP-300'
+            if self.device.kind is ecl.DeviceCodes.KBIO_DEV_SP300
             else dp.VMP3_Fields.CA
         )
         self._parameter_types = tfs.CA
@@ -642,7 +644,7 @@ class CP( BiologicProgram ):
         
         self._data_fields = (
             dp.SP300_Fields.CP
-            if self.device.kind is 'SP-300'
+            if self.device.kind is ecl.DeviceCodes.KBIO_DEV_SP300
             else dp.VMP3_Fields.CP
         )
         self._parameter_types = tfs.CP
@@ -840,7 +842,7 @@ class CALimit( BiologicProgram ):
         
         self._data_fields = (
             dp.SP300_Fields.CALIMIT
-            if self.device.kind is 'SP-300'
+            if self.device.kind is ecl.DeviceCodes.KBIO_DEV_SP300
             else dp.VMP3_Fields.CALIMIT
         )
         self._parameter_types = tfs.CALIMIT
@@ -949,7 +951,7 @@ class CALimit( BiologicProgram ):
             )
 
 
-# In[1]:
+# In[ ]:
 
 
 class JV_Scan( BiologicProgram ):
@@ -1001,7 +1003,7 @@ class JV_Scan( BiologicProgram ):
         
         self._data_fields = (
             dp.SP300_Fields.CV
-            if self.device.kind is 'SP-300'
+            if self.device.kind is ecl.DeviceCodes.KBIO_DEV_SP300
             else dp.VMP3_Fields.CV
         )
         
@@ -1371,7 +1373,7 @@ class MPP_Tracking( CALimit ):
         }
 
 
-# In[1]:
+# In[ ]:
 
 
 class MPP( MPP_Tracking ):
@@ -1574,7 +1576,7 @@ class MPP( MPP_Tracking ):
         return v_mpp
 
 
-# In[1]:
+# In[ ]:
 
 
 class MPP_Cycles( MPP ):
