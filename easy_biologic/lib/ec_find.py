@@ -5,7 +5,7 @@
 # Library for finding connected Biologic devices.
 
 # # API
-# All functions of the BL Find DLL are implemented under their corresponding names. In addition the follwoing convenience functions are implemented.
+# All functions of the BL Find DLL are implemented under their corresponding names. In addition the following convenience functions are implemented.
 # 
 # **find_devices( connection ):** Returns a list of Devices of the gievn connection type.
 # 
