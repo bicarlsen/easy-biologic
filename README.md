@@ -102,7 +102,6 @@ Represents a program to be run on a device channel.
 ### Base Programs
 Contains basic implementations of BiologicPrograms.
 
-
 #### OCV
 ##### Params
 + **time:** Run time in seconds.
