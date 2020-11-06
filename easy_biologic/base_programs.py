@@ -436,6 +436,7 @@ class OCV( BiologicProgram ):
             dp.SP300_Fields.OCV
             if self.device.kind is ecl.DeviceCodes.KBIO_DEV_SP300 else 
             dp.VMP3_Fields.OCV   
+        )
 
         self._parameter_types = tfs.OCV
 
