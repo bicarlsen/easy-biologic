@@ -102,40 +102,6 @@ Represents a program to be run on a device channel.
 ### Base Programs
 Contains basic implementations of BiologicPrograms.
 
-#### PEIS
-###### Params
-+ **voltage:** Initial potential in Volts.
-
-+ **amplitude_voltage:** Sinus amplitude in Volts.
-
-+ **initial_frequency**: Initial frequency in Hertz.
-       
-+ **final_frequency:** Final frequency in Hertz.
-
-+ **frequency_number:** Number of frequencies.
-
-+ **duration:** Overall duration in seconds.
-
-+ **vs_initial:** If step is vs. initial or previous. 
-[Default: False]
-
-+ **time_interval:** Maximum time interval between points in seconds. 
-[Default: 1]
-
-+ **current_interval:** Maximum time interval between points in Amps. 
-[Default: 0.001]
-
-+ **sweep:** Defines whether the spacing between frequencies is logarithmic ('log') or linear ('lin'). 
-[Default: 'log'] 
-
-+ **repeat:** Number of times to repeat the measurement and average the valuesfor each frequency. 
-[Default: 1]
-
-+ **correction:** Drift correction. 
-[Default: False]
-
-+ **wait:** Adds a delay before the measurement at each frequency. The delayis expressed as a fraction of the period. 
-[Default: 0]
 
 #### OCV
 ##### Params
@@ -179,7 +145,6 @@ Contains basic implementations of BiologicPrograms.
 
 + **time_interval:** Maximum time interval between points.
 [Default: 1]
-    
 + **current_interval:** Maximum current change between points.
 [Default: 0.001]
             
@@ -189,6 +154,41 @@ Contains basic implementations of BiologicPrograms.
 ##### Methods
 + **update_voltage( voltages, durations = None, vs_initial = None ):** Updates the voltage.
 
+#### PEIS
+##### Params
++ **voltage:** Initial potential in Volts.
+
++ **amplitude_voltage:** Sinus amplitude in Volts.
+
++ **initial_frequency**: Initial frequency in Hertz.
+       
++ **final_frequency:** Final frequency in Hertz.
+
++ **frequency_number:** Number of frequencies.
+
++ **duration:** Overall duration in seconds.
+
++ **vs_initial:** If step is vs. initial or previous. 
+[Default: False]
+
++ **time_interval:** Maximum time interval between points in seconds. 
+[Default: 1]
+
++ **current_interval:** Maximum time interval between points in Amps. 
+[Default: 0.001]
+
++ **sweep:** Defines whether the spacing between frequencies is logarithmic ('log') or linear ('lin'). 
+[Default: 'log'] 
+
++ **repeat:** Number of times to repeat the measurement and average the values for each frequency. 
+[Default: 1]
+
++ **correction:** Drift correction. 
+[Default: False]
+
++ **wait:** Adds a delay before the measurement at each frequency. The delay is expressed as a fraction of the period. 
+[Default: 0]
+    
 #### JV_Scan
 Performs a JV scan.
 

@@ -103,7 +103,7 @@ class CPLIMIT( Enum ):
 # In[ ]:
 
 
-class PEIS (Enum):
+class PEIS( Enum ):
     vs_initial           = bool
     vs_final             = bool
     Initial_Voltage_step = float 
