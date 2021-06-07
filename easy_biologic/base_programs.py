@@ -437,10 +437,11 @@ class OCV( BiologicProgram ):
             if self.device.kind is ecl.DeviceCodes.KBIO_DEV_SP300 else 
             dp.VMP3_Fields.OCV   
         )
-
+        
+    
         self._parameter_types = tfs.OCV
-
-            
+        
+        
     def run( self, retrieve_data = True ):
         """
         :param retrieve_data: Automatically retrieve and disconenct form device.
@@ -516,7 +517,7 @@ class CA( BiologicProgram ):
             threaded    = threaded
         )
         
-        self._technqiues = [ 'ca' ]
+        self._techniques = [ 'ca' ]
         self._fields = namedtuple( 'CA_Datum', [
             'time', 'voltage', 'current', 'power', 'cycle'
         ] )
@@ -632,7 +633,7 @@ class CP( BiologicProgram ):
             [Default: False]
         time_interval: Maximum time interval between points in seconds. 
             [Default: 1]
-        voltage_interval: Maximum voltge change between points in Volts. 
+        voltage_interval: Maximum voltage change between points in Volts. 
             [Default: 0.001]
         """
         defaults = {
@@ -1391,7 +1392,7 @@ class MPP_Tracking( CALimit ):
             cb.start()
         
         super().run( retrieve_data = False )
-        self.__hold_and_probe( folder, by_channel = by_channel )  # hold and probe
+        self._hold_and_probe( folder, by_channel = by_channel )  # hold and probe
         
         # program end
         if self.autoconnect is True:
@@ -1401,7 +1402,7 @@ class MPP_Tracking( CALimit ):
         
     #--- helper functions ---           
             
-    def __hold_and_probe( self, folder = None, by_channel = False ):
+    def _hold_and_probe( self, folder = None, by_channel = False ):
         """
         :param folder: Folder or file for saving data or 
             None if automatic saving is not desired.
@@ -1453,10 +1454,10 @@ class MPP_Tracking( CALimit ):
                       
             # hold
             ( self.active_channels, hold_segments ) = asyncio.run(
-                self.__hold_and_retrieve( hold_time ) 
+                self._hold_and_retrieve( hold_time ) 
             )
             
-            self.__append_data( hold_segments ) # add data
+            self._append_data( hold_segments ) # add data
             
             if len( self.active_channels ) is 0:
                 # program end
@@ -1470,23 +1471,23 @@ class MPP_Tracking( CALimit ):
             
             self.update_voltages( probe_voltages  )
             ( self.active_channels, probe_segments ) = asyncio.run( 
-                self.__hold_and_retrieve( probe_time ) 
+                self._hold_and_retrieve( probe_time ) 
             )
             
-            self.__append_data( probe_segments ) # add data
+            self._append_data( probe_segments ) # add data
             
             if len( self.active_channels ) is 0:
                 # program end
                 break
     
             # compare powers
-            powers = self.__calculate_powers( 
+            powers = self._calculate_powers( 
                 hold_segments,
                 probe_segments
             )
                
             # set new v_mpp
-            self.__new_v_mpp( powers )
+            self._new_v_mpp( powers )
             self.update_voltages( self.v_mpp )
 
             # save intermediate data
@@ -1494,7 +1495,7 @@ class MPP_Tracking( CALimit ):
                 self.save_data( folder, by_channel = by_channel )
                 
     
-    async def __hold_and_retrieve( self, duration ):
+    async def _hold_and_retrieve( self, duration ):
         """
         @async
         Wait for a given time, then retrieve data
@@ -1518,7 +1519,7 @@ class MPP_Tracking( CALimit ):
         return ( active, segments )
     
     
-    def __append_data( self, segments ):
+    def _append_data( self, segments ):
         fields = lambda datum, segment: (
             dp.calculate_time( 
                 datum.t_high, 
@@ -1540,9 +1541,9 @@ class MPP_Tracking( CALimit ):
             ]
         
     
-    def __calculate_powers( self, hold_segments, probe_segments ):
+    def _calculate_powers( self, hold_segments, probe_segments ):
         powers = {
-            ch: self.__calculate_power( 
+            ch: self._calculate_power( 
                 hold_segments[ ch ].data, 
                 probe_segments[ ch ].data 
             )
@@ -1553,7 +1554,7 @@ class MPP_Tracking( CALimit ):
         return powers
         
     
-    def __calculate_power( self, hold_data, probe_data ):
+    def _calculate_power( self, hold_data, probe_data ):
         # normalize compare times
         cmp_len = min( len( hold_data ), len( probe_data ) ) 
         hold_data  = hold_data[  -cmp_len: ]
@@ -1570,7 +1571,7 @@ class MPP_Tracking( CALimit ):
         return MPP_Powers( hold, probe )
     
     
-    def __new_v_mpp( self, powers ):
+    def _new_v_mpp( self, powers ):
         for ch, ch_power in powers.items():
             # update probe directions
             probe_better = ( ch_power.probe < ch_power.hold ) # powers are negative
@@ -1656,8 +1657,8 @@ class MPP( MPP_Tracking ):
             self._connect()
         
         #--- init ---        
-        self.voc = self.__run_ocv( ocv_loc, by_channel = by_channel ) # voc
-        self.v_mpp = self.__run_jv( self.voc, jv_loc, by_channel = by_channel, jv_params = jv_params ) # jv 
+        self.voc = self._run_ocv( ocv_loc, by_channel = by_channel ) # voc
+        self.v_mpp = self._run_jv( self.voc, jv_loc, by_channel = by_channel, jv_params = jv_params ) # jv 
         
         for ch, ch_params in self.params.items():
             ch_params[ 'init_vmpp' ] = self.v_mpp[ ch ]
@@ -1674,7 +1675,7 @@ class MPP( MPP_Tracking ):
         
     #--- helper functions ---
     
-    def __init_mpp_file( self, file ):
+    def _init_mpp_file( self, file ):
         ca_titles = [ 
             'Time [s]', 
             'Voltage [V]', 
@@ -1697,7 +1698,7 @@ class MPP( MPP_Tracking ):
                 raise err
             
             
-    def __run_ocv( self, file, by_channel = False ):
+    def _run_ocv( self, file, by_channel = False ):
         """
         Runs an OCV program to find the voc for each channel.
         
@@ -1736,7 +1737,7 @@ class MPP( MPP_Tracking ):
         return voc
         
         
-    def __run_jv( self, voc, file, by_channel = False, jv_params = {} ):
+    def _run_jv( self, voc, file, by_channel = False, jv_params = {} ):
         """
         Runs JV_Scan program to obtain initial v_mpp.
         
@@ -1842,6 +1843,7 @@ class MPP_Cycles( MPP ):
         while self.cycle < cycles_max:
             self._run_mpp_cycle( self.cycle, data, by_channel = by_channel )
             self.cycle += 1
+    
     
     def _run_mpp_cycle( self, cycle, folder, by_channel = False ):
         cycle_path = 'cycle-{:02.0f}'.format( cycle )

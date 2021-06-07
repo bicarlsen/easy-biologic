@@ -307,9 +307,9 @@ Updates the paramters of a technique on teh given device channel.
 
 + **start_channels( idn, ch ):** Starts the given device channels.
 
-+ **srop_channel( idn, ch ):** Stops the given device channel.
++ **stop_channel( idn, ch ):** Stops the given device channel.
 
-+ **srop_channels( idn, chs ):** Stops the given device channels.
++ **stop_channels( idn, chs ):** Stops the given device channels.
 
 + **get_values( idn, ch ):** Gets the current values and states of the given device channel.
 

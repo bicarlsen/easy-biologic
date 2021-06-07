@@ -12,7 +12,7 @@ project_urls = {
 
 setuptools.setup(
     name = "easy-biologic",
-    version = "0.1.1",
+    version = "0.1.2",
     author = "Brian Carlsen",
     author_email = "carlsen.bri@gmail.com",
     description = "Controller class for communicating with BioLogic devices.",
@@ -24,7 +24,7 @@ setuptools.setup(
     packages = setuptools.find_packages(),
     classifiers = [
         "Programming Language :: Python :: 3",
-        "License :: OSI Approved :: MIT License",
+        "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
         "Operating System :: OS Independent",
         "Development Status :: 3 - Alpha"
     ],
