@@ -6,22 +6,22 @@
 
 # ## API
 # Parses data received from a technique and contains technique fields for different device types.
-# 
+#
 # ### Methods
 # **parse( data, info, fields = None, device = None ):** Parses data received from a technique.
-# 
+#
 # **calculate_time( t_high, t_low, data_info, current_value ):** Calculates elapsed time from time data.
-# 
+#
 # ### Classes
-# **VMP3_Fields:** Contains technqiue fields for VMP3 devices. 
+# **VMP3_Fields:** Contains technqiue fields for VMP3 devices.
 # (Not all techniques are implemented)
 # Properties: [ OCV, CP, CA, CPLIMIT, CALIMIT, CV, PEIS ]
-# 
-# **SP300_Fields:** Contains technqiue fields for SP-300 devices. 
+#
+# **SP300_Fields:** Contains technqiue fields for SP-300 devices.
 # (Not all techniques are implemented)
 # Properties: [ OCV, CP, CA, CPLIMIT, CALIMIT, CV, PEIS ]
 
-# In[14]:
+
 
 
 import math
@@ -31,8 +31,6 @@ from . import ec_lib as ecl
 
 
 # # Parser
-
-# In[ ]:
 
 
 def parse( data, info, fields = None, device = None ):
@@ -49,23 +47,21 @@ def parse( data, info, fields = None, device = None ):
     rows = info.NbRows
     cols = info.NbCols
     technique = ecl.TechniqueId( info.TechniqueID )
-    
+
     if fields is None and device is not None:
         fields = (
             SP300_Fields[ techinque ]
             if device.kind is ecl.DeviceCodes.KBIO_DEV_SP300
             else VMP3_Fields[ technique ]
         )
-        
+
     if fields is None and device is None:
         raise ValueError( 'Both fields and device not defined.' )
 
-        
+
     if isinstance( fields, tuple ):
         fields = fields[ info.ProcessIndex ]
-    
-        
-    
+
     if cols is 0:
         raise RuntimeError( 'No columns in data.' )
 
@@ -75,8 +71,8 @@ def parse( data, info, fields = None, device = None ):
 
     # convert singles
     data = [
-        ecl.convert_numeric( datum ) 
-        if ( fields[ index % cols ].type is ecl.ParameterType.SINGLE ) 
+        ecl.convert_numeric( datum )
+        if ( fields[ index % cols ].type is ecl.ParameterType.SINGLE )
         else datum
         for index, datum in enumerate( data )
     ]
@@ -89,36 +85,27 @@ def parse( data, info, fields = None, device = None ):
     return parsed
 
 
-# In[ ]:
-
-
 def calculate_time( t_high, t_low, data_info, current_value ):
     """
     Calculates time from the t_high and t_low fields.
-    
+
     :param t_high: t_high.
     :param t_low: t_low.
     :param data_info: DataInfo object of the technique.
     :param current_values: CurrentValues object of the technique.
     :returns: Time
     """
-    start = data_info.StartTime 
+    start = data_info.StartTime
     if math.isnan( start ):
         # start is not a number, assume 0
         start = 0
-    
+
     elapsed = current_value.TimeBase*( ( t_high << 32 ) + t_low )
     return ( start + elapsed )
 
 
-# In[23]:
-
-
 # For holding field info.
 FieldInfo = namedtuple( 'FieldInfo', [ 'name', 'type' ] )
-
-
-# In[ ]:
 
 
 class VMP3_Fields():
@@ -126,19 +113,19 @@ class VMP3_Fields():
     Holds technique field definitions.
     """
     # for convenience
-    TID     = ecl.TechniqueId 
+    TID     = ecl.TechniqueId
     INT32   = ecl.ParameterType.INT32
     BOOL    = ecl.ParameterType.BOOLEAN
     SINGLE  = ecl.ParameterType.SINGLE
     FI      = FieldInfo
-    
+
     OCV = [
-        FI( 't_high',   INT32   ),  
+        FI( 't_high',   INT32   ),
         FI( 't_low',    INT32   ),
         FI( 'voltage',  SINGLE  ),
         FI( 'control',  SINGLE  )
     ]
-    
+
     CP = [
         FI( 't_high',  INT32  ),
         FI( 't_low',   INT32  ),
@@ -146,11 +133,11 @@ class VMP3_Fields():
         FI( 'current', SINGLE ),
         FI( 'cycle',   INT32  )
     ]
-    
+
     CA      = CP
     CPLIMIT = CP
     CALIMIT = CP
-    
+
     CV = [
         FI( 't_high',  INT32  ),
         FI( 't_low',   INT32  ),
@@ -159,7 +146,7 @@ class VMP3_Fields():
         FI( 'voltage', SINGLE ),
         FI( 'cycle',   INT32  )
     ]
-    
+
     PEIS = (
         [# process == 0
             FI( 't_high',  INT32  ),
@@ -187,26 +174,24 @@ class VMP3_Fields():
     )
 
 
-# In[34]:
-
 
 class SP300_Fields():
     """
     Holds technique field definitions.
     """
     # for convenience
-    TID     = ecl.TechniqueId 
+    TID     = ecl.TechniqueId
     INT32   = ecl.ParameterType.INT32
     BOOL    = ecl.ParameterType.BOOLEAN
     SINGLE  = ecl.ParameterType.SINGLE
     FI      = FieldInfo
-    
+
     OCV = [
-        FI( 't_high',   INT32   ),  
+        FI( 't_high',   INT32   ),
         FI( 't_low',    INT32   ),
         FI( 'voltage',  SINGLE  )
     ]
-    
+
     CP = [
         FI( 't_high',  INT32  ),
         FI( 't_low',   INT32  ),
@@ -214,11 +199,11 @@ class SP300_Fields():
         FI( 'current', SINGLE ),
         FI( 'cycle',   INT32  )
     ]
-    
+
     CA      = CP
     CPLIMIT = CP
     CALIMIT = CP
-    
+
     CV = [
         FI( 't_high',  INT32  ),
         FI( 't_low',   INT32  ),
@@ -226,7 +211,7 @@ class SP300_Fields():
         FI( 'voltage', SINGLE ),
         FI( 'cycle',   INT32  )
     ]
-    
+
     PEIS = (
         [# process == 0
             FI( 't_high',  INT32  ),
@@ -250,5 +235,5 @@ class SP300_Fields():
             FI( 'empty3',              INT32  ),
             FI( 'time',                SINGLE )
         ]
-    ) 
+    )
 

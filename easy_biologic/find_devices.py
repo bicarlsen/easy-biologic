@@ -4,15 +4,10 @@
 # # Find Devices
 # Convenience script for finding Biologic devices.
 
-# In[13]:
-
 
 import argparse
 
 from .lib import ec_find as ecf
-
-
-# In[5]:
 
 
 def run():
@@ -21,7 +16,7 @@ def run():
         description = 'Find BioLogic devices.'
     )
 
-    parser.add_argument( 
+    parser.add_argument(
         '--connection', '-conn', '-c',
         dest = 'conn',
         choices = [ 'usb', 'eth' ],
@@ -42,9 +37,6 @@ def run():
         print( desc )
 
 
-# In[ ]:
-
 
 if __name__ == '__main__':
     run()
-

@@ -4,22 +4,14 @@
 # # Technique Fields
 # Field types for each technique.
 
-# In[1]:
-
 
 from enum import Enum
-
-
-# In[2]:
 
 
 class OCV( Enum ):
     Rest_time_T     = float
     Record_every_dE = float
     Record_every_dT = float
-
-
-# In[3]:
 
 
 class CV( Enum ):
@@ -34,9 +26,6 @@ class CV( Enum ):
     End_measuring_I   = float
 
 
-# In[ ]:
-
-
 class CA( Enum ):
     Voltage_step      = float
     vs_initial        = bool
@@ -47,9 +36,6 @@ class CA( Enum ):
     N_Cycles          = int
 
 
-# In[ ]:
-
-
 class CP( Enum ):
     Current_step      = float
     vs_initial        = bool
@@ -58,9 +44,6 @@ class CP( Enum ):
     Record_every_dT   = float
     Record_every_dE   = float
     N_Cycles          = int
-
-
-# In[ ]:
 
 
 class CALIMIT( Enum ):
@@ -80,9 +63,6 @@ class CALIMIT( Enum ):
     N_Cycles          = int
 
 
-# In[ ]:
-
-
 class CPLIMIT( Enum ):
     Current_step      = float
     vs_initial        = bool
@@ -100,24 +80,20 @@ class CPLIMIT( Enum ):
     N_Cycles          = int
 
 
-# In[ ]:
-
-
 class PEIS( Enum ):
     vs_initial           = bool
     vs_final             = bool
-    Initial_Voltage_step = float 
+    Initial_Voltage_step = float
     Final_Voltage_step   = float
-    Duration_step        = float 
+    Duration_step        = float
     Step_number          = int
     Record_every_dT      = float
     Record_every_dI      = float
     Final_frequency      = float
     Initial_frequency    = float
     sweep                = bool
-    Amplitude_Voltage    = float 
+    Amplitude_Voltage    = float
     Frequency_number     = int
     Average_N_times      = int
     Correction           = bool
     Wait_for_steady      = float
-
