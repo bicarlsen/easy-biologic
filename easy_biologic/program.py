@@ -24,17 +24,26 @@
 # **_connect():** Connects to the device.
 #
 # ### Properties
-# **device:** BiologicDevice. <br>
-# **channel:** Device channel. <br>
-# **params:** Passed in parameters. <br>
-# **autoconnect:** Whether connection to the device should be automatic or not. <br>
-# **barrier:** A threading.Barrier to use for channel syncronization. [See ProgramRummer] <br>
-# **field_titles:** Column names for saving data. <br>
-# **data:** Data collected during the program. <br>
-# **status:** Status of the program. <br>
-# **fields:** Data fields teh program returns. <br>
-# **technqiues:** List of techniques the program uses. <br>
-#
+# **device:** BiologicDevice.
+
+# **channel:** Device channel.
+
+# **params:** Passed in parameters.
+
+# **autoconnect:** Whether connection to the device should be automatic or not.
+
+# **barrier:** A threading.Barrier to use for channel syncronization. [See ProgramRummer]
+
+# **field_titles:** Column names for saving data.
+
+# **data:** Data collected during the program.
+
+# **status:** Status of the program.
+
+# **fields:** Data fields the program returns.
+
+# **technqiues:** List of techniques the program uses.
+# 
 # ## Program Runner
 # Represents a program to be run on a device channel.
 #
@@ -48,7 +57,7 @@
 # **stop():** Sets the stop event.
 #
 # ### Properties
-# **threads:** List of threads for each program. <br>
+# **threads:** List of threads for each program.
 # **sync:** Whether to sync the threads or not.
 #
 
@@ -85,11 +94,12 @@ class BiologicProgram( ABC ):
         self,
         device,
         params,
-        channels    = None,
-        autoconnect = True,
-        barrier     = None,
-        stop_event  = None,
-        threaded    = False
+        channels     = None,
+        autoconnect  = True,
+        field_values = None,
+        barrier      = None,
+        stop_event   = None,
+        threaded     = False
     ):
         """
         Initialize instance parameters.
@@ -111,8 +121,23 @@ class BiologicProgram( ABC ):
             [Default: None]
         :param threaded: Indicated if the program is running as a thread.
             [Default: False]
+        :raises ValueError: If data_window is a dictionary and missing channel keys.
+
+        Properties
+        :_fields: A named tuple representing the program data.
+        :field_titles: List of names for each field to be used when writing data.
+            Should have same length as number of fields.
+        :_field_values: Function returning a tuple of fields or None.
+            If a function, data is appended to self.data by calling the function
+            with input ( datum, segment ). Returned data should be of type self._fields.
+            If None, no data retrieval or processing occurs.
+            [Default: None]
+        :_data_fields: Technique field types.
+            [See lib.data_parser.SP300_Fields and lib.data_parser.VMP3_Fields]
+        :_parameter_types: Enum of parameter types for each techinuqe field.
+            [See lib.technique_fields]
         """
-        self.device   = device
+        self.device       = device
         self.autoconnect  = autoconnect
         self.barrier      = barrier
         self.field_titles = [] # column names for saving data
@@ -127,11 +152,15 @@ class BiologicProgram( ABC ):
             self.params = { ch: params.copy() for ch in channels }
             self._channels = channels
 
-        self._techniques  = [] # program techniques
-        self._data        = { ch: [] for ch in self.channels } # data store
-        self._fields      = None # program fields
-        self._data_fields = None # technique fields
-        self._parameter_types = None # parameter types for the technqiue
+        self._techniques   = []  # program techniques
+        self._fields       = None  # program fields object
+        self._field_values = None  # fucntion to compute program fields
+        self._data_fields  = None  # technique input fields
+        self._parameter_types = None  # parameter types for the technique
+
+        self._data = { ch: [] for ch in self.channels }  # data store
+        self._unsaved_data = { ch: [] for ch in self.channels }  # data store for unwritten data
+        self.data_window = None  # initialize to keep all data
 
         self._threaded = threaded
         self._stop_event = stop_event
@@ -164,11 +193,51 @@ class BiologicProgram( ABC ):
 
 
     @property
+    def data_window( self ):
+        """
+        :returns: Data window used to trim channel data.
+        """
+        return self._data_window
+
+
+    @data_window.setter
+    def data_window( self, value ):
+        """
+        Sets the data window.
+        :param value: Dictionary of { channel: amount } for amount of data to keep,
+            or an amount to apply to all channels, after each save.
+            If amount is a non-negative integer, keeps at that many data points,
+                clearing data after each write to file.
+            If amount is None, keeps all data.
+            [Default: 0]
+        """
+        if isinstance( value, dict ):
+            missing = [ ch for ch in self.channels if ch not in value.keys() ]
+            if len( missing ):
+                # missing channels
+                raise ValueError( f'Channel(s) {missing} missing.' )
+
+            self._data_window = value
+
+        else:
+            # static value
+            self._data_window = { ch: value for ch in self.channels }
+
+
+    @property
     def fields( self ):
         """
         :returns: Fields object.
         """
         return self._fields
+
+
+    @property
+    def field_values( self ):
+        """
+        :returns: Field values function.
+        """
+        return self._field_values
 
 
     @property
@@ -178,7 +247,9 @@ class BiologicProgram( ABC ):
         """
         return self._techniques
 
+
     #--- public methods ---
+
 
     def channel_state( self, channels = None ):
         """
@@ -216,9 +287,10 @@ class BiologicProgram( ABC ):
         Register a callback when data is collected.
 
         :param cb: A callback function to be called.
-            The function should accept one parameter of type
-            DataSegment, a namedtuple with properties
+            The function should have signature (segment, program ).
+            segment is a DataSegment, a namedtuple with properties
             [ data, info, values ], as returned by BiologicDevice.get_data().
+            program is the program being run.
         :param index: Index at which to run the callback or None to append.
             If index exceeds current length of callback list, then function is appended.
             [Default: None]
@@ -256,11 +328,72 @@ class BiologicProgram( ABC ):
             If False, file should be a file path.
             [Default: False]
         """
-        if by_channel:
-            self._save_data_individual( file, append )
+        if append is False:
+            if not hasattr( self, '_write_header' ):
+                self._write_header = True
+
+            else:
+                # header already written
+                # append to file
+                append = True
 
         else:
-            self._save_data_together( file, append )
+            # don't write header if appending
+            self._write_header = False
+
+        if by_channel:
+            self._save_data_individual(
+                file,
+                append = append,
+                write_header = self._write_header
+            )
+
+        else:
+            self._save_data_together(
+                file,
+                append = append,
+                write_header = self._write_header
+            )
+
+        # only write header at most once
+        self._write_header = False    
+
+        # drop data outside data window
+        self.trim_data()
+
+
+    def trim_data( self, window = None ):
+        """
+        Trims data to a specific length.
+
+        :param window: Dictionary of { channel: amount } for amount of data to save
+            of None to use self.data_window.
+            If amount is a non-negative integer, saves at most that many data points,
+                clearing data after each write to file.
+            If amount is None does not trim any data.
+            [Default: None]
+        :raises ValueError: If an invalid channel is provided as a window key.
+        """
+        if window is None:
+            window = self.data_window
+
+        # validate channels
+        invalid_channels = [ ch for ch in window.keys() if ch not in self.channels ]
+        if len( invalid_channels ) > 0:
+            raise ValueError( f'Invalid channel(s): {invalid_channels}' )
+
+        # trim data
+        for ch, ch_window in window.items():
+            if ch_window is None:
+                # don't trim data
+                continue
+
+            elif ch_window == 0:
+                # clear data
+                self._data[ ch ] = []
+
+            else:
+                self._data[ ch ] = self._data[ ch ][ -ch_window: ]
 
 
     def sync( self ):
@@ -276,7 +409,7 @@ class BiologicProgram( ABC ):
         Sets stop event.
         """
         if self._stop_event is None:
-            logging.warning( 'No stop event is present on channels {}.'.format( self.channels ) )
+            logging.warning( f'No stop event is present on channels {self.channels}.' )
             return
 
         self._stop_event.set()
@@ -301,18 +434,16 @@ class BiologicProgram( ABC ):
             self.device.disconnect()
 
 
-    def _run( self, technique, params, fields = None, interval = 1 ):
+    def _run( self, technique, params, interval = 1, retrieve_data = True ):
         """
         Runs the program.
 
         :param technqiue: Name of technique.
         :param params: Technique parameters.
-        :params fields: Function returning a tuple of fields or None.
-            If function, self._data is automatically set.
-            Function input is ( datum, segment ).
-            If None no data retrieval or processing occurs.
-            [Default: None]
         :param interval: Time between data fetches. [Default: 1]
+        :param retrieve_data: Whether data should be retrieved or not. 
+            self.field_values must be valid.
+            [Default: True]
         """
         # run technique
         if self.autoconnect:
@@ -328,18 +459,11 @@ class BiologicProgram( ABC ):
 
         self.device.start_channels( self.channels )
 
-        if fields is not None:
-            data = asyncio.run( self._retrieve_data( interval ) )
+        if retrieve_data:
+            asyncio.run( self._retrieve_data( interval ) )
 
             if self.autoconnect is True:
                 self._disconnect()
-
-            for ch, ch_data in data.items():
-                self._data[ ch ] = [
-                    self._fields( *fields( datum, segment ) )
-                    for segment in ch_data
-                    for datum in segment.data
-                ]
 
 
     async def _retrieve_data_segment( self, channel ):
@@ -360,16 +484,24 @@ class BiologicProgram( ABC ):
             )
 
         except RuntimeError as err:
-            msg = 'ch {}: {}'.format( channel, err )
+            msg = f'ch {channel}: {err}'
             logging.debug( msg )
 
             return DataSegment( [], raw.info, raw.values )
 
         segment = DataSegment( parsed, raw.info, raw.values )
 
+        if self._fields and self._field_values:
+            parsed = [
+                self._fields( *self._field_values( datum, segment ) )
+                for datum in segment.data
+            ]
+            self._data[ channel ] += parsed
+            self._unsaved_data[ channel ] += parsed
+
         # run callbacks
         for cb in self._cb_data:
-            cb( segment )
+            cb( segment, self )
 
         return segment
 
@@ -393,7 +525,6 @@ class BiologicProgram( ABC ):
         return segments
 
 
-
     async def _retrieve_data( self, interval = 1 ):
         """
         @async
@@ -405,16 +536,14 @@ class BiologicProgram( ABC ):
         :returns: Dictionary of lists of DataSegments with properties
             [ data, info, values ], keyed by channel.
         """
-        data = { ch: []  for ch in self.channels }
         complete = { ch: False for ch in self.channels }
-
         while not all( complete.values() ):
-            if ( # stop signal received
+            if (  # stop signal received
                 self._stop_event is not None
                 and self._stop_event.is_set()
             ):
                 logging.warning(
-                    'Halting program on channel {}.'.format( self.channel )
+                    f'Halting program on channel {self.channel}.'
                 )
 
                 break
@@ -427,19 +556,16 @@ class BiologicProgram( ABC ):
 
             for ch, ch_segment in segments.items():
                 done = ( ecl.ChannelState( ch_segment.values.State  ) is ecl.ChannelState.STOP )
-                data[ ch ].append( ch_segment )
-
                 complete[ ch ] = done
                 if done:
-                    logging.debug( 'Channel {} complete.'.format( ch ) )
-
-        return data
+                    logging.debug( f'Channel {ch} complete.' )
 
 
     def _save_data_together(
         self,
         file,
-        append = False
+        append = False,
+        write_header = False
     ):
         """
         Saves data to a CSV file.
@@ -447,18 +573,20 @@ class BiologicProgram( ABC ):
         :param file: File path.
         :param append: True to append to file, false to overwrite.
             [Default: False]
+        :param write_header: Whether to write header or not.
+            [Default: False]
         """
         mode = 'a' if append else 'w'
-
         try:
             with open( file, mode ) as f:
-                if not append:
+                num_titles = len( self.field_titles )
+                
+                if write_header:
                     # write header only if not appending
                     # write channel header if multichanneled
-                    num_titles = len( self.field_titles )
                     ch_header = ''
                     for ch in self.channels:
-                        ch_header += ( '{},'.format( ch ) )* num_titles
+                        ch_header += f'{ch},'* num_titles
 
                     # replace last comma with line end
                     ch_header = ch_header[ :-1 ] + '\n'
@@ -474,30 +602,48 @@ class BiologicProgram( ABC ):
                     # replace last comma with new line
                     title_header = title_header[ :-1 ] + '\n'
 
-                    f.write( title_header )
+                    try:
+                        f.write( title_header )
+
+                    except Exception as err:
+                        logging.warning( f'Error writing header: {err}' )
 
                 # write data
                 # get maximum rows
-                num_ch_cols = len( self.field_titles )
-                num_rows = { ch: len( data ) for ch, data in self.data.items() }
+                num_rows = { ch: len( data ) for ch, data in self._unsaved_data.items() }
+                written = { ch: [] for ch in self._unsaved_data.keys() }
                 for index in range( max( num_rows.values() ) ):
                     row_data = ''
-                    for ch, ch_data in self.data.items():
+                    for ch, ch_data in self._unsaved_data.items():
                         if index < num_rows[ ch ]:
                             # valid row for channel
-                            row_data += ','.join( map( self._datum_to_str, ch_data[ index ] ) ) + ','
+                            ch_datum = ch_data[ index ]
+                            row_data += ','.join( map( self._datum_to_str, ch_datum ) ) + ','
+                            written[ ch ].append( ch_datum )
 
                         else:
                             # channel data exhausted, write placeholders
-                            row_data += ','* num_ch_cols
+                            row_data += ','* num_titles
 
                     # new row
                     row_data = row_data[ :-1 ] + '\n'
-                    f.write( row_data )
+
+                    try:
+                        f.write( row_data )
+
+                    except Exception as err:
+                        logging.warning( f'Error writing data: {err}' )
+
+                # data written, remove data from unsaved
+                for ch, ch_data in written.items():
+                    self._unsaved_data[ ch ] = [
+                        datum for datum in ch_data
+                        if datum not in written[ ch ]
+                    ]
 
         except Exception as err:
             if self._threaded:
-                logging.warning( '[#save_data] CH{}: {}'.format( ch, err ) )
+                logging.warning( f'[#save_data] CH{ch}: {err}' )
 
             else:
                 raise err
@@ -506,7 +652,8 @@ class BiologicProgram( ABC ):
     def _save_data_individual(
         self,
         folder,
-        append = False
+        append = False,
+        write_header = False
     ):
         """
         Saves data to a CSV file.
@@ -514,14 +661,16 @@ class BiologicProgram( ABC ):
         :param folder: Folder path.
         :param append: True to append to file, false to overwrite.
             [Default: False]
+        :param write_header: Whether to write header or not.
+            [Default: False]
         """
         mode = 'a' if append else 'w'
 
         if not os.path.exists( folder ):
             os.makedirs( folder )
 
-        for ch, ch_data in self.data.items():
-            file = os.path.join( folder, 'ch-{}.csv'.format( ch ) )
+        for ch, ch_data in self._unsaved_data.items():
+            file = os.path.join( folder, f'ch-{ch}.csv' )
 
             csv_data = ''
             for datum in ch_data:
@@ -530,7 +679,7 @@ class BiologicProgram( ABC ):
 
             try:
                 with open( file, mode ) as f:
-                    if not append:
+                    if write_header:
                         # write header only if not appending
                         f.write( ','.join( self.field_titles ) + '\n' )
 
@@ -538,7 +687,11 @@ class BiologicProgram( ABC ):
                     f.write( csv_data )
 
             except Exception as err:
-                logging.warning( '[#_save_data_individual] CH{}: {}'.format( ch, err ) )
+                logging.warning( f'[#_save_data_individual] CH{ch}: {err}' )
+
+            else:
+                # data written successfully
+                self._unsaved_data[ ch ] = []
 
 
     def _datum_to_str( self, datum ):

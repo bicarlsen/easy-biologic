@@ -148,13 +148,13 @@ class VMP3_Fields():
     ]
 
     PEIS = (
-        [# process == 0
+        [  # process == 0
             FI( 't_high',  INT32  ),
             FI( 't_low',   INT32  ),
             FI( 'voltage', SINGLE ),
             FI( 'current', SINGLE )
         ],
-        [# process == 1
+        [  # process == 1
             FI( 'frequency',           SINGLE ),
             FI( 'abs_voltage',         SINGLE ),
             FI( 'abs_current',         SINGLE ),
@@ -172,7 +172,6 @@ class VMP3_Fields():
             FI( 'current_range',       SINGLE )
         ]
     )
-
 
 
 class SP300_Fields():
@@ -213,13 +212,13 @@ class SP300_Fields():
     ]
 
     PEIS = (
-        [# process == 0
+        [  # process == 0
             FI( 't_high',  INT32  ),
             FI( 't_low',   INT32  ),
             FI( 'voltage', SINGLE ),
             FI( 'current', SINGLE )
         ],
-        [# process == 1
+        [  # process == 1
             FI( 'frequency',           SINGLE ),
             FI( 'abs_voltage',         SINGLE ),
             FI( 'abs_current',         SINGLE ),
@@ -236,4 +235,3 @@ class SP300_Fields():
             FI( 'time',                SINGLE )
         ]
     )
-

@@ -12,7 +12,7 @@ project_urls = {
 
 setuptools.setup(
     name = "easy-biologic",
-    version = "0.1.2",
+    version = "0.2.0",
     author = "Brian Carlsen",
     author_email = "carlsen.bri@gmail.com",
     description = "Controller class for communicating with BioLogic devices.",

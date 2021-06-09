@@ -409,7 +409,7 @@ import easy_biologic.base_programs as blp
 
 
 # create device
-bl = ebl.BiologicDevice( 'USB0' )
+bl = ebl.BiologicDevice( '192.168.1.2' )
 
 # create mpp program
 params = {
@@ -419,7 +419,7 @@ params = {
 mpp = blp.MPP(
     bl,
     params, 	
-    channels = [ 0, 1, 2, 3, 4, 5, 7 ]        
+    channels = [ 0, 1, 2, 3, 4, 5, 6 ]        
 )
 
 # run program

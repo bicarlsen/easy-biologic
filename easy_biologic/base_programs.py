@@ -382,6 +382,8 @@ def map_params( key_map, params, by_channel = True, keep = False, inplace = Fals
     return params
 
 
+# --- Base Classes ---
+
 
 class OCV( BiologicProgram ):
     """
@@ -392,44 +394,52 @@ class OCV( BiologicProgram ):
         self,
         device,
         params,
-        channels    = None,
-        autoconnect = True,
-        barrier     = None,
-        threaded    = False
+        **kwargs
     ):
         """
-        Params are
-        time: Run time in seconds.
-        time_interval: Maximum time between readings. [Default: 1]
-        voltage_interval: Maximum interval between voltage readings.
-            [Default: 0.01]
+        :param device: BiologicDevice.
+        :param params: Program parameters.
+            Params are
+            time: Run time in seconds.
+            time_interval: Maximum time between readings. [Default: 1]
+            voltage_interval: Maximum interval between voltage readings.
+                [Default: 0.01]
+        :param **kwargs: Parameters passed to BiologicProgram.
         """
         defaults = {
             'time_interval': 1,
             'voltage_interval': 0.01
         }
+        channels = kwargs[ 'channels' ] if ( 'channels' in kwargs ) else None
         params = set_defaults( params, defaults, channels )
 
         super().__init__(
             device,
             params,
-            channels    = channels,
-            autoconnect = autoconnect,
-            barrier     = barrier,
-            threaded    = threaded
+            **kwargs
         )
 
         self._techniques = [ 'ocv' ]
-        self._fields = namedtuple( 'OCV_Datum', [ 'time', 'voltage' ] )
-        self.field_titles = [ 'Time [s]', 'Voltage [V]' ]
+        self._parameter_types = tfs.OCV
+
         self._data_fields = (
             dp.SP300_Fields.OCV
             if self.device.kind is ecl.DeviceCodes.KBIO_DEV_SP300 else
             dp.VMP3_Fields.OCV
         )
 
+        self.field_titles = [ 'Time [s]', 'Voltage [V]' ]
+        self._fields = namedtuple( 'OCV_Datum', [ 'time', 'voltage' ] )
+        self._field_values = lambda datum, segment: (  # calculate fields
+            dp.calculate_time(  # time
+                datum.t_high,
+                datum.t_low,
+                segment.info,
+                segment.values
+            ),
 
-        self._parameter_types = tfs.OCV
+            datum.voltage
+        )
 
 
     def run( self, retrieve_data = True ):
@@ -445,21 +455,8 @@ class OCV( BiologicProgram ):
         }
         params = map_params( key_map, self.params )
 
-        fields = None
-        if retrieve_data:
-            fields = lambda datum, segment: ( # calculate fields
-                dp.calculate_time( # time
-                    datum.t_high,
-                    datum.t_low,
-                    segment.info,
-                    segment.values
-                ),
-
-                datum.voltage
-            )
-
         # run technique
-        self._run( 'ocv', params, fields )
+        self._run( 'ocv', params, retrieve_data = retrieve_data )
 
 
 class CA( BiologicProgram ):
@@ -471,21 +468,21 @@ class CA( BiologicProgram ):
         self,
         device,
         params,
-        channels    = None,
-        autoconnect = True,
-        barrier     = None,
-        threaded    = False
+        **kwargs
     ):
         """
-        Params are
-        voltages: List of voltages in Volts.
-        durations: List of times in seconds.
-        vs_initial: If step is vs. initial or previous.
-            [Default: False]
-        time_interval: Maximum time interval between points in seconds.
-            [Default: 1]
-        current_interval: Maximum current change between points in Amps.
-            [Default: 0.001]
+        :param device: BiologicDevice.
+        :param params: Program parameters.
+            Params are
+            voltages: List of voltages in Volts.
+            durations: List of times in seconds.
+            vs_initial: If step is vs. initial or previous.
+                [Default: False]
+            time_interval: Maximum time interval between points in seconds.
+                [Default: 1]
+            current_interval: Maximum current change between points in Amps.
+                [Default: 0.001]
+        :param **kwargs: Parameters passed to BiologicProgram.
         """
         defaults = {
             'vs_initial':       False,
@@ -494,20 +491,21 @@ class CA( BiologicProgram ):
             'current_range':    ecl.IRange.m10
         }
 
+        channels = kwargs[ 'channels' ] if ( 'channels' in kwargs ) else None
         params = set_defaults( params, defaults, channels )
         super().__init__(
             device,
             params,
-            channels    = channels,
-            autoconnect = autoconnect,
-            barrier     = barrier,
-            threaded    = threaded
+            **kwargs
         )
 
         self._techniques = [ 'ca' ]
-        self._fields = namedtuple( 'CA_Datum', [
-            'time', 'voltage', 'current', 'power', 'cycle'
-        ] )
+        self._parameter_types = tfs.CA
+        self._data_fields = (
+            dp.SP300_Fields.CA
+            if self.device.kind is ecl.DeviceCodes.KBIO_DEV_SP300
+            else dp.VMP3_Fields.CA
+        )
 
         self.field_titles = [
             'Time [s]',
@@ -517,12 +515,23 @@ class CA( BiologicProgram ):
             'Cycle'
         ]
 
-        self._data_fields = (
-            dp.SP300_Fields.CA
-            if self.device.kind is ecl.DeviceCodes.KBIO_DEV_SP300
-            else dp.VMP3_Fields.CA
+        self._fields = namedtuple( 'CA_Datum', [
+            'time', 'voltage', 'current', 'power', 'cycle'
+        ] )
+
+        self._field_values = lambda datum, segment: (
+            dp.calculate_time(
+                datum.t_high,
+                datum.t_low,
+                segment.info,
+                segment.values
+            ),
+
+            datum.voltage,
+            datum.current,
+            datum.voltage* datum.current, # power
+            datum.cycle
         )
-        self._parameter_types = tfs.CA
 
 
     def run( self, retrieve_data = True ):
@@ -545,24 +554,8 @@ class CA( BiologicProgram ):
                 'I_Range':           ch_params[ 'current_range' ].value
             }
 
-        fields = None
-        if retrieve_data:
-            fields = lambda datum, segment: (
-                dp.calculate_time(
-                    datum.t_high,
-                    datum.t_low,
-                    segment.info,
-                    segment.values
-                ),
-
-                datum.voltage,
-                datum.current,
-                datum.voltage* datum.current, # power
-                datum.cycle
-            )
-
         # run technique
-        data = self._run( 'ca', params, fields )
+        data = self._run( 'ca', params, retrieve_data = retrieve_data )
 
 
     def update_voltages(
@@ -604,21 +597,21 @@ class CP( BiologicProgram ):
         self,
         device,
         params,
-        channels    = None,
-        autoconnect = True,
-        barrier     = None,
-        threaded    = False
+        **kwargs
     ):
         """
-        Params are
-        currents: List of currents in Amps.
-        durations: List of times in seconds.
-        vs_initial: If step is vs. initial or previous.
-            [Default: False]
-        time_interval: Maximum time interval between points in seconds.
-            [Default: 1]
-        voltage_interval: Maximum voltage change between points in Volts.
-            [Default: 0.001]
+        :param device: BiologicDevice.
+        :param params: Program parameters.
+            Params are
+            currents: List of currents in Amps.
+            durations: List of times in seconds.
+            vs_initial: If step is vs. initial or previous.
+                [Default: False]
+            time_interval: Maximum time interval between points in seconds.
+                [Default: 1]
+            voltage_interval: Maximum voltage change between points in Volts.
+                [Default: 0.001]
+        :param **kwargs: Parameters passed to BiologicProgram.
         """
         defaults = {
             'vs_initial':       False,
@@ -626,14 +619,12 @@ class CP( BiologicProgram ):
             'voltage_interval': 1e-3
         }
 
+        channels = kwargs[ 'channels' ] if ( 'channels' in kwargs ) else None
         params = set_defaults( params, defaults, channels )
         super().__init__(
             device,
             params,
-            channels    = channels,
-            autoconnect = autoconnect,
-            barrier     = barrier,
-            threaded    = threaded
+            **kwargs
         )
 
         for ch, ch_params in self.params.items():
@@ -642,9 +633,12 @@ class CP( BiologicProgram ):
             )
 
         self._techniques = [ 'cp' ]
-        self._fields = namedtuple( 'CP_Datum', [
-            'time', 'voltage', 'current', 'power', 'cycle'
-        ] )
+        self._parameter_types = tfs.CP
+        self._data_fields = (
+            dp.SP300_Fields.CP
+            if self.device.kind is ecl.DeviceCodes.KBIO_DEV_SP300
+            else dp.VMP3_Fields.CP
+        )
 
         self.field_titles = [
             'Time [s]',
@@ -654,12 +648,23 @@ class CP( BiologicProgram ):
             'Cycle'
         ]
 
-        self._data_fields = (
-            dp.SP300_Fields.CP
-            if self.device.kind is ecl.DeviceCodes.KBIO_DEV_SP300
-            else dp.VMP3_Fields.CP
+        self._fields = namedtuple( 'CP_Datum', [
+            'time', 'voltage', 'current', 'power', 'cycle'
+        ] )
+
+        self._field_values = lambda datum, segment: (
+            dp.calculate_time(
+                datum.t_high,
+                datum.t_low,
+                segment.info,
+                segment.values
+            ),
+
+            datum.voltage,
+            datum.current,
+            datum.voltage* datum.current,  # power
+            datum.cycle
         )
-        self._parameter_types = tfs.CP
 
 
     def run( self, retrieve_data = True ):
@@ -682,24 +687,8 @@ class CP( BiologicProgram ):
                 'I_Range':           ch_params[ 'current_range' ].value
             }
 
-        fields = None
-        if retrieve_data:
-            fields = lambda datum, segment: (
-                dp.calculate_time(
-                    datum.t_high,
-                    datum.t_low,
-                    segment.info,
-                    segment.values
-                ),
-
-                datum.voltage,
-                datum.current,
-                datum.voltage* datum.current, # power
-                datum.cycle
-            )
-
         # run technique
-        data = self._run( 'cp', params, fields )
+        data = self._run( 'cp', params, retrieve_data = retrieve_data )
 
 
     def update_currents(
@@ -709,7 +698,7 @@ class CP( BiologicProgram ):
         vs_initial = None
     ):
         """
-        Update current and duration parameters
+        Update current and duration parameters.
         """
         steps = len( currents )
 
@@ -801,23 +790,23 @@ class CALimit( BiologicProgram ):
         self,
         device,
         params,
-        channels    = None,
-        autoconnect = True,
-        barrier     = None,
-        threaded    = False
+        **kwargs
     ):
         """
-        Params are
-        voltages: List of voltages.
-        durations: List of times in seconds.
-        vs_initial: If step is vs. initial or previous.
-            [Default: False]
-        time_interval: Maximum time interval between points.
-            [Default: 1]
-        current_interval: Maximum current change between points.
-            [Default: 0.001]
-        current_range: Current range. Use ec_lib.IRange.
-            [Default: IRange.m10 ]
+        :param device: BiologicDevice.
+        :param params: Program parameters.
+            Params are
+            voltages: List of voltages.
+            durations: List of times in seconds.
+            vs_initial: If step is vs. initial or previous.
+                [Default: False]
+            time_interval: Maximum time interval between points.
+                [Default: 1]
+            current_interval: Maximum current change between points.
+                [Default: 0.001]
+            current_range: Current range. Use ec_lib.IRange.
+                [Default: IRange.m10 ]
+        :param **kwargs: Parameters passed to BiologicProgram.
         """
         defaults = {
             'vs_initial':       False,
@@ -826,20 +815,21 @@ class CALimit( BiologicProgram ):
             'current_range':    ecl.IRange.m10
         }
 
+        channels = kwargs[ 'channels' ] if ( 'channels' in kwargs ) else None
         params = set_defaults( params, defaults, channels )
         super().__init__(
             device,
             params,
-            channels    = channels,
-            autoconnect = autoconnect,
-            barrier     = barrier,
-            threaded    = threaded
+            **kwargs
         )
 
         self._techniques = [ 'calimit' ]
-        self._fields = namedtuple( 'CALimit_Datum', [
-            'time', 'voltage', 'current', 'power', 'cycle'
-        ] )
+        self._parameter_types = tfs.CALIMIT
+        self._data_fields = (
+            dp.SP300_Fields.CALIMIT
+            if self.device.kind is ecl.DeviceCodes.KBIO_DEV_SP300
+            else dp.VMP3_Fields.CALIMIT
+        )
 
         self.field_titles = [
             'Time [s]',
@@ -848,13 +838,24 @@ class CALimit( BiologicProgram ):
             'Power [W]',
             'Cycle'
         ]
+        
+        self._fields = namedtuple( 'CALimit_Datum', [
+            'time', 'voltage', 'current', 'power', 'cycle'
+        ] )
 
-        self._data_fields = (
-            dp.SP300_Fields.CALIMIT
-            if self.device.kind is ecl.DeviceCodes.KBIO_DEV_SP300
-            else dp.VMP3_Fields.CALIMIT
+        self._field_values = lambda datum, segment: (
+            dp.calculate_time(
+                datum.t_high,
+                datum.t_low,
+                segment.info,
+                segment.values
+            ),
+
+            datum.voltage,
+            datum.current,
+            datum.voltage* datum.current, # power
+            datum.cycle
         )
-        self._parameter_types = tfs.CALIMIT
 
 
     def run( self, retrieve_data = True ):
@@ -884,24 +885,9 @@ class CALimit( BiologicProgram ):
                 'I_Range':           ch_params[ 'current_range' ].value
             }
 
-        fields = None
-        if retrieve_data:
-            fields = lambda datum, segment: (
-                dp.calculate_time(
-                    datum.t_high,
-                    datum.t_low,
-                    segment.info,
-                    segment.values
-                ),
-
-                datum.voltage,
-                datum.current,
-                datum.voltage* datum.current, # power
-                datum.cycle
-            )
 
         # run technique
-        data = self._run( 'calimit', params, fields )
+        data = self._run( 'calimit', params, retrieve_data = retrieve_data )
 
 
     def update_voltages(
@@ -969,32 +955,32 @@ class PEIS( BiologicProgram ):
         self,
         device,
         params,
-        channels    = None,
-        autoconnect = True,
-        barrier     = None,
-        threaded    = False
+        **kwargs
     ):
         """
-        Params are
-        voltage: Initial potential in Volts.
-        amplitude_voltage: Sinus amplitude in Volts.
-        initial_frequency: Initial frequency in Hertz.
-        final_frequency: Final frequency in Hertz.
-        frequency_number: Number of frequencies.
-        duration: Overall duration in seconds.
-        vs_initial: If step is vs. initial or previous.
-            [Default: False]
-        time_interval: Maximum time interval between points in seconds.
-            [Default: 1]
-        current_interval: Maximum time interval between points in Amps.
-            [Default: 0.001]
-        sweep: Defines whether the spacing between frequencies is logarithmic
-            ('log') or linear ('lin'). [Default: 'log']
-        repeat: Number of times to repeat the measurement and average the values
-            for each frequency. [Default: 1]
-        correction: Drift correction. [Default: False]
-        wait: Adds a delay before the measurement at each frequency. The delay
-            is expressed as a fraction of the period. [Default: 0]
+        :param device: BiologicDevice.
+        :param params: Program parameters.
+            Params are
+            voltage: Initial potential in Volts.
+            amplitude_voltage: Sinus amplitude in Volts.
+            initial_frequency: Initial frequency in Hertz.
+            final_frequency: Final frequency in Hertz.
+            frequency_number: Number of frequencies.
+            duration: Overall duration in seconds.
+            vs_initial: If step is vs. initial or previous.
+                [Default: False]
+            time_interval: Maximum time interval between points in seconds.
+                [Default: 1]
+            current_interval: Maximum time interval between points in Amps.
+                [Default: 0.001]
+            sweep: Defines whether the spacing between frequencies is logarithmic
+                ('log') or linear ('lin'). [Default: 'log']
+            repeat: Number of times to repeat the measurement and average the values
+                for each frequency. [Default: 1]
+            correction: Drift correction. [Default: False]
+            wait: Adds a delay before the measurement at each frequency. The delay
+                is expressed as a fraction of the period. [Default: 0]
+        :param **kwargs: Parameters passed to BiologicProgram.
         """
         # set sweep to false if spacing is logarithmic
         if 'sweep' in params:
@@ -1017,16 +1003,37 @@ class PEIS( BiologicProgram ):
             'wait':             0
         }
 
+        channels = kwargs[ 'channels' ] if ( 'channels' in kwargs ) else None
         params = set_defaults( params, defaults, channels )
         super().__init__(
             device,
             params,
-            channels    = channels,
-            autoconnect = autoconnect,
-            barrier     = barrier,
-            threaded    = threaded
+            **kwargs
         )
 
+        self._techniques = [ 'peis' ]
+        self._parameter_types = tfs.PEIS
+        self._data_fields = (
+            dp.SP300_Fields.PEIS
+            if self.device.kind is ecl.DeviceCodes.KBIO_DEV_SP300
+            else dp.VMP3_Fields.PEIS
+        )
+        
+        self.field_titles = [
+            'Process',
+            'Time [s]',
+            'Voltage [V]',
+            'Current [A]',
+            'abs( Voltage ) [V]',
+            'abs( Current ) [A]',
+            'Impendance phase',
+            'Voltage_ce [V]',
+            'abs( Voltage_ce ) [V]',
+            'abs( Current_ce ) [A]',
+            'Impendance_ce phase',
+            'Frequency [Hz]'
+        ]
+        
         self._fields = namedtuple( 'PEIS_datum', [
             'process',
             'time',
@@ -1042,24 +1049,53 @@ class PEIS( BiologicProgram ):
             'frequency'
         ] )
        
-        self.field_titles = [
-            'Process',
-            'Time [s]',
-            'Voltage [V]',
-            'Current [A]',
-            'abs( Voltage ) [V]',
-            'abs( Current ) [A]',
-            'Impendance phase',
-            'Voltage_ce [V]',
-            'abs( Voltage_ce ) [V]',
-            'abs( Current_ce ) [A]',
-            'Impendance_ce phase',
-            'Frequency [Hz]'
-            ]
+        def _peis_fields( datum, segment ):
+            """
+            Define fields for _run function.
+            """
+            if segment.info.ProcessIndex == 0:
+                f = (
+                    segment.info.ProcessIndex,
+                    dp.calculate_time(
+                        datum.t_high,
+                        datum.t_low,
+                        segment.info,
+                        segment.values
+                    ),
+                    datum.voltage,
+                    datum.current,
+                    None,
+                    None,
+                    None,
+                    None,
+                    None,
+                    None,
+                    None,
+                    None
+                )
 
-        self._techniques = [ 'peis' ]
+            elif segment.info.ProcessIndex == 1:
+                f = (
+                    segment.info.ProcessIndex,
+                    datum.time,
+                    datum.voltage,
+                    datum.current,
+                    datum.abs_voltage,
+                    datum.abs_current,
+                    datum.impendance_phase,
+                    datum.voltage_ce,
+                    datum.abs_voltage_ce,
+                    datum.abs_current_ce,
+                    datum.impendance_ce_phase,
+                    datum.frequency
+                )
 
-        self._parameter_types = tfs.PEIS
+            else:
+                raise RuntimeError( f'Invalid ProcessIndex ({segment.info.ProcessIndex})' )
+
+            return f
+
+        self._field_values = _peis_fields
 
 
     def run( self, retrieve_data = True ):
@@ -1088,60 +1124,8 @@ class PEIS( BiologicProgram ):
                 'Wait_for_steady':      ch_params[ 'wait' ]
             }
 
-        if retrieve_data:
-            def fields( datum, segment ):
-                """
-                Define fields for _run function.
-                """
-                if segment.info.ProcessIndex is 0:
-                    f = (
-                        segment.info.ProcessIndex,
-                        dp.calculate_time(
-                            datum.t_high,
-                            datum.t_low,
-                            segment.info,
-                            segment.values
-                        ),
-                        datum.voltage,
-                        datum.current,
-                        None,
-                        None,
-                        None,
-                        None,
-                        None,
-                        None,
-                        None,
-                        None
-                    )
-                elif segment.info.ProcessIndex is 1:
-                    f = (
-                        segment.info.ProcessIndex,
-                        datum.time,
-                        datum.voltage,
-                        datum.current,
-                        datum.abs_voltage,
-                        datum.abs_current,
-                        datum.impendance_phase,
-                        datum.voltage_ce,
-                        datum.abs_voltage_ce,
-                        datum.abs_current_ce,
-                        datum.impendance_ce_phase,
-                        datum.frequency
-                    )
-                else:
-                    raise valueError( 'Invalid ProcessIndex ({})'.format( segment.info.ProcessIndex ) )
-
-                return f
-
-
-        self._data_fields = (
-            dp.SP300_Fields.PEIS
-            if self.device.kind is ecl.DeviceCodes.KBIO_DEV_SP300
-            else dp.VMP3_Fields.PEIS
-        )
-
         # run technique
-        data = self._run( 'peis', params, fields )
+        data = self._run( 'peis', params, retrieve_data = retrieve_data )
 
 
 class JV_Scan( BiologicProgram ):
@@ -1152,18 +1136,18 @@ class JV_Scan( BiologicProgram ):
         self,
         device,
         params,
-        channels    = None,
-        autoconnect = True,
-        barrier     = None,
-        threaded    = False
+        **kwargs
     ):
         """
-        Params are
-        start: Dictionary of start voltages keyed by channels. [Defualt: 0]
-        end: Dictionary of end voltages keyed by channels.
-        step: Voltage step. [Default: 0.01]
-        rate: Scan rate in mV/s. [Default: 10]
-        average: Average over points. [Default: False]
+        :param device: BiologicDevice.
+        :param params: Program parameters.
+            Params are
+            start: Dictionary of start voltages keyed by channels. [Defualt: 0]
+            end: Dictionary of end voltages keyed by channels.
+            step: Voltage step. [Default: 0.01]
+            rate: Scan rate in mV/s. [Default: 10]
+            average: Average over points. [Default: False]
+        :param **kwargs: Parameters passed to BiologicProgram.
         """
         # defaults
         defaults = {
@@ -1172,32 +1156,34 @@ class JV_Scan( BiologicProgram ):
             'rate':  10,
             'average': False
         }
+        channels = kwargs[ 'channels' ] if ( 'channels' in kwargs ) else None
         params = set_defaults( params, defaults, channels )
 
         super().__init__(
             device,
             params,
-            channels    = channels,
-            autoconnect = autoconnect,
-            barrier     = barrier,
-            threaded    = threaded
+            **kwargs
         )
 
         self._techniques = [ 'cv' ]
-
-        self._fields = namedtuple( 'CV_Datum', [
-           'voltage', 'current', 'power'
-        ] )
-
-        self.field_titles = [ 'Voltage [V]', 'Current [A]', 'Power [W]' ]
-
+        self._parameter_types = tfs.CV
         self._data_fields = (
             dp.SP300_Fields.CV
             if self.device.kind is ecl.DeviceCodes.KBIO_DEV_SP300
             else dp.VMP3_Fields.CV
         )
 
-        self._parameter_types = tfs.CV
+        self.field_titles = [ 'Voltage [V]', 'Current [A]', 'Power [W]' ]
+        
+        self._fields = namedtuple( 'CV_Datum', [
+           'voltage', 'current', 'power'
+        ] )
+
+        self._field_values = lambda datum, segment: (
+            datum.voltage,
+            datum.current,
+            datum.voltage* datum.current  # power
+        )
 
 
     def run( self, retrieve_data = True ):
@@ -1223,16 +1209,8 @@ class JV_Scan( BiologicProgram ):
                 'End_measuring_I':   1  # finish measurement at end of interval
             }
 
-        fields = None
-        if retrieve_data:
-            fields = lambda datum, segment: (
-                datum.voltage,
-                datum.current,
-                datum.voltage* datum.current # power
-            )
-
         # run technique
-        data = self._run( 'cv', params, fields )
+        data = self._run( 'cv', params, retrieve_data = retrieve_data )
 
 
 MPP_Powers = namedtuple( 'MPP_Powers', [ 'hold', 'probe' ] )
@@ -1245,21 +1223,21 @@ class MPP_Tracking( CALimit ):
         self,
         device,
         params,
-        channels    = None,
-        autoconnect = True,
-        barrier     = None,
-        threaded    = False
+        **kwargs
     ):
         """
-        Params are
-        run_time: Run time in seconds.
-        init_vmpp: Dictionary of initial v_mpp keyed by channel.
-        probe_step: Voltage step for probe. [Default: 0.005 V]
-        probe_points: Number of data points to collect for probe.
-            [Default: 5]
-        probe_interval: How often to probe in seconds. [Default: 2]
-        record_interval: How often to record a data point in seconds.
-            [Default: 1]
+        :param device: BiologicDevice.
+        :param params: Program parameters.
+            Params are
+            run_time: Run time in seconds.
+            init_vmpp: Dictionary of initial v_mpp keyed by channel.
+            probe_step: Voltage step for probe. [Default: 0.005 V]
+            probe_points: Number of data points to collect for probe.
+                [Default: 5]
+            probe_interval: How often to probe in seconds. [Default: 2]
+            record_interval: How often to record a data point in seconds.
+                [Default: 1]
+        :param **kwargs: Parameters passed to CALimit.
         """
         # set up params
         defaults = {
@@ -1268,6 +1246,7 @@ class MPP_Tracking( CALimit ):
             'probe_interval':  2,
             'record_interval': 1
         }
+        channels = kwargs[ 'channels' ] if ( 'channels' in kwargs ) else None
         params = set_defaults( params, defaults, channels )
 
         # map to ca parameters
@@ -1297,10 +1276,7 @@ class MPP_Tracking( CALimit ):
         super().__init__(
             device,
             params,
-            channels    = channels,
-            autoconnect = autoconnect,
-            barrier     = barrier,
-            threaded    = threaded
+            **kwargs
         )
 
         self.active_channels = self.channels
@@ -1373,7 +1349,9 @@ class MPP_Tracking( CALimit ):
 
         self.save_data( folder, by_channel = by_channel )
 
+
     #--- helper functions ---
+    
 
     def _hold_and_probe( self, folder = None, by_channel = False ):
         """
@@ -1430,7 +1408,7 @@ class MPP_Tracking( CALimit ):
                 self._hold_and_retrieve( hold_time )
             )
 
-            self._append_data( hold_segments ) # add data
+            # self._append_data( hold_segments )  # add data
 
             if len( self.active_channels ) is 0:
                 # program end
@@ -1503,15 +1481,17 @@ class MPP_Tracking( CALimit ):
 
             datum.voltage,
             datum.current,
-            datum.voltage* datum.current, # power
+            datum.voltage* datum.current,  # power
             datum.cycle
         )
 
         for ch, segment in segments.items():
-            self._data[ ch ] += [
+            data = [
                 self._fields( *fields( datum, segment ) )
                 for datum in segment.data
             ]
+
+            self._data[ ch ] += data
 
 
     def _calculate_powers( self, hold_segments, probe_segments ):
@@ -1568,35 +1548,32 @@ class MPP( MPP_Tracking ):
         self,
         device,
         params,
-        channels    = None,
-        autoconnect = True,
-        barrier     = None,
-        threaded    = False
+        **kwargs
     ):
         """
-        Params are
-        run_time: Run time in seconds.
-        probe_step: Voltage step for probe. [Default: 0.005 V]
-        probe_points: Number of data points to collect for probe.
-            [Default: 5]
-        probe_interval: How often to probe in seconds. [Default: 2]
-        record_interval: How often to record a data point in seconds.
-            [Default: 1]
-
+        :param device: BiologicDevice.
+        :param params: Program parameters.
+            Params are
+            run_time: Run time in seconds.
+            probe_step: Voltage step for probe. [Default: 0.005 V]
+            probe_points: Number of data points to collect for probe.
+                [Default: 5]
+            probe_interval: How often to probe in seconds. [Default: 2]
+            record_interval: How often to record a data point in seconds.
+                [Default: 1]
+        :param **kwargs: Parameters passed to MPP_Tracking.
         """
 
         defaults = {
             'init_vmpp': 0 # initial set of vmpp
         }
+        channels = kwargs[ 'channels' ] if ( 'channels' in kwargs ) else None
         params = set_defaults( params, defaults, channels )
 
         super().__init__(
             device,
             params,
-            channels    = channels,
-            autoconnect = autoconnect,
-            barrier     = barrier,
-            threaded    = threaded
+            **kwargs
         )
 
         self.voc = None
@@ -1769,29 +1746,26 @@ class MPP_Cycles( MPP ):
         self,
         device,
         params,
-        channels    = None,
-        autoconnect = True,
-        barrier     = None,
-        threaded    = False
+        **kwargs
     ):
         """
-        Params are
-        run_time: Cycle run time in seconds.
-        cycles: Number of cycles to perform.
-        probe_step: Voltage step for probe. [Default: 0.01 V]
-        probe_points: Number of data points to collect for probe.
-            [Default: 5]
-        probe_interval: How often to probe in seconds. [Default: 2]
-        record_interval: How often to record a data point in seconds.
-            [Default: 1]
+        :param device: BiologicDevice.
+        :param params: Program parameters.
+            Params are
+            run_time: Cycle run time in seconds.
+            cycles: Number of cycles to perform.
+            probe_step: Voltage step for probe. [Default: 0.01 V]
+            probe_points: Number of data points to collect for probe.
+                [Default: 5]
+            probe_interval: How often to probe in seconds. [Default: 2]
+            record_interval: How often to record a data point in seconds.
+                [Default: 1]
+        :param **kwargs: Parameters passed to MPP.
         """
         super().__init__(
             device,
             params,
-            channels    = channels,
-            autoconnect = autoconnect,
-            barrier     = barrier,
-            threaded    = threaded
+            **kwargs
         )
 
         self.cycle = None
