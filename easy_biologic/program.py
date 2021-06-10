@@ -613,13 +613,14 @@ class BiologicProgram( ABC ):
                 num_rows = { ch: len( data ) for ch, data in self._unsaved_data.items() }
                 written = { ch: [] for ch in self._unsaved_data.keys() }
                 for index in range( max( num_rows.values() ) ):
+                    written_row = { ch: None for ch in self._unsaved_data.keys() }
                     row_data = ''
                     for ch, ch_data in self._unsaved_data.items():
                         if index < num_rows[ ch ]:
                             # valid row for channel
                             ch_datum = ch_data[ index ]
                             row_data += ','.join( map( self._datum_to_str, ch_datum ) ) + ','
-                            written[ ch ].append( ch_datum )
+                            written_row[ ch ] = ch_datum
 
                         else:
                             # channel data exhausted, write placeholders
@@ -633,6 +634,11 @@ class BiologicProgram( ABC ):
 
                     except Exception as err:
                         logging.warning( f'Error writing data: {err}' )
+
+                    else:
+                        # successful write
+                        for ch, ch_datum in written_row:
+                            written[ ch ].append( ch_datum )
 
                 # data written, remove data from unsaved
                 for ch, ch_data in written.items():
