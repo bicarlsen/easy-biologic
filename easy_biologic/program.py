@@ -43,7 +43,7 @@
 # **fields:** Data fields the program returns.
 
 # **technqiues:** List of techniques the program uses.
-# 
+#
 # ## Program Runner
 # Represents a program to be run on a device channel.
 #
@@ -124,9 +124,12 @@ class BiologicProgram( ABC ):
         :raises ValueError: If data_window is a dictionary and missing channel keys.
 
         Properties
-        :_fields: A named tuple representing the program data.
+        :write_attempts: Number of attempts to try to write data, afterwhich an exception is raised.
+            If None, never raise an exception.
+            [Default: 0]
         :field_titles: List of names for each field to be used when writing data.
             Should have same length as number of fields.
+        :_fields: A named tuple representing the program data.
         :_field_values: Function returning a tuple of fields or None.
             If a function, data is appended to self.data by calling the function
             with input ( datum, segment ). Returned data should be of type self._fields.
@@ -140,7 +143,9 @@ class BiologicProgram( ABC ):
         self.device       = device
         self.autoconnect  = autoconnect
         self.barrier      = barrier
-        self.field_titles = [] # column names for saving data
+        self.field_titles = []  # column names for saving data
+        self.write_attempts = 0
+        self._writes_failed = 0
 
         if channels is None:
             # assume channels from params
@@ -248,6 +253,14 @@ class BiologicProgram( ABC ):
         return self._techniques
 
 
+    @property
+    def writes_failed(self):
+        """
+        :returns: Number of failed writes since last success.
+        """
+        return self._writes_failed
+
+
     #--- public methods ---
 
 
@@ -341,22 +354,38 @@ class BiologicProgram( ABC ):
             # don't write header if appending
             self._write_header = False
 
-        if by_channel:
-            self._save_data_individual(
-                file,
-                append = append,
-                write_header = self._write_header
-            )
+        try:
+            if by_channel:
+                self._save_data_individual(
+                    file,
+                    append = append,
+                    write_header = self._write_header
+                )
+
+            else:
+                self._save_data_together(
+                    file,
+                    append = append,
+                    write_header = self._write_header
+                )
+
+
+        except Exception as err:
+            self._writes_failed += 1
+
+            if (
+                ( self.write_attempts is not None ) and
+                ( self.writes_failed > self.write_attempts )
+            ):
+                raise err
 
         else:
-            self._save_data_together(
-                file,
-                append = append,
-                write_header = self._write_header
-            )
+            # only write header at most once
+            self._write_header = False
 
-        # only write header at most once
-        self._write_header = False    
+            # successful write
+            # reset failed attempts
+            self._writes_failed = 0
 
         # drop data outside data window
         self.trim_data()
@@ -441,7 +470,7 @@ class BiologicProgram( ABC ):
         :param technqiue: Name of technique.
         :param params: Technique parameters.
         :param interval: Time between data fetches. [Default: 1]
-        :param retrieve_data: Whether data should be retrieved or not. 
+        :param retrieve_data: Whether data should be retrieved or not.
             self.field_values must be valid.
             [Default: True]
         """
@@ -580,7 +609,7 @@ class BiologicProgram( ABC ):
         try:
             with open( file, mode ) as f:
                 num_titles = len( self.field_titles )
-                
+
                 if write_header:
                     # write header only if not appending
                     # write channel header if multichanneled
@@ -637,7 +666,7 @@ class BiologicProgram( ABC ):
 
                     else:
                         # successful write
-                        for ch, ch_datum in written_row:
+                        for ch, ch_datum in written_row.items():
                             written[ ch ].append( ch_datum )
 
                 # data written, remove data from unsaved
