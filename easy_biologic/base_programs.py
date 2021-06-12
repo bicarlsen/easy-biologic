@@ -853,7 +853,7 @@ class CALimit( BiologicProgram ):
 
             datum.voltage,
             datum.current,
-            datum.voltage* datum.current, # power
+            datum.voltage* datum.current,  # power
             datum.cycle
         )
 
@@ -1389,7 +1389,7 @@ class MPP_Tracking( CALimit ):
         while True:
             # loop until measurement ends
 
-            if ( # stop signal received
+            if (  # stop signal received
                 self._stop_event is not None
                 and self._stop_event.is_set()
             ):
@@ -1408,8 +1408,6 @@ class MPP_Tracking( CALimit ):
                 self._hold_and_retrieve( hold_time )
             )
 
-            # self._append_data( hold_segments )  # add data
-
             if len( self.active_channels ) is 0:
                 # program end
                 break
@@ -1424,8 +1422,6 @@ class MPP_Tracking( CALimit ):
             ( self.active_channels, probe_segments ) = asyncio.run(
                 self._hold_and_retrieve( probe_time )
             )
-
-            self._append_data( probe_segments ) # add data
 
             if len( self.active_channels ) is 0:
                 # program end
@@ -1468,30 +1464,6 @@ class MPP_Tracking( CALimit ):
         ]
 
         return ( active, segments )
-
-
-    def _append_data( self, segments ):
-        fields = lambda datum, segment: (
-            dp.calculate_time(
-                datum.t_high,
-                datum.t_low,
-                segment.info,
-                segment.values
-            ),
-
-            datum.voltage,
-            datum.current,
-            datum.voltage* datum.current,  # power
-            datum.cycle
-        )
-
-        for ch, segment in segments.items():
-            data = [
-                self._fields( *fields( datum, segment ) )
-                for datum in segment.data
-            ]
-
-            self._data[ ch ] += data
 
 
     def _calculate_powers( self, hold_segments, probe_segments ):
