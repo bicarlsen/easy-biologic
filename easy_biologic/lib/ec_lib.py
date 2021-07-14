@@ -98,7 +98,7 @@ import pkg_resources
 from enum import Enum
 
 from .ec_errors import EcError
-
+from .. import common
 
 # ## Constants
 
@@ -376,6 +376,7 @@ class DataInfo( c.Structure ):
 
 
 #--- init ---
+
 # get platform architecture
 arch = platform.architecture()
 bits = arch[ 0 ]
@@ -385,7 +386,7 @@ logging.debug( '[biologic_controller] Running on {}-bit platform.'.format( bits 
 
 bits = '' if ( bits == 32 ) else '64'
 dll_file = os.path.join(
-    pkg_resources.resource_filename( 'easy_biologic', 'techniques' ),
+    common.technique_directory(),
     'EClib{}.dll'.format( bits )
 )
 __dll = c.WinDLL( dll_file )

@@ -545,7 +545,7 @@ class CA( BiologicProgram ):
 
             params[ ch ] = {
                 'Voltage_step':      ch_params[ 'voltages' ],
-                'vs_inital':         [ ch_params[ 'vs_initial' ] ]* steps,
+                'vs_initial':        [ ch_params[ 'vs_initial' ] ]* steps,
                 'Duration_step':     ch_params[ 'durations' ],
                 'Step_number':       steps - 1,
                 'Record_every_dT':   ch_params[ 'time_interval' ],
@@ -678,7 +678,7 @@ class CP( BiologicProgram ):
 
             params[ ch ] = {
                 'Current_step':      ch_params[ 'currents' ],
-                'vs_inital':         [ ch_params[ 'vs_initial' ] ]* steps,
+                'vs_initial':        [ ch_params[ 'vs_initial' ] ]* steps,
                 'Duration_step':     ch_params[ 'durations' ],
                 'Step_number':       steps - 1,
                 'Record_every_dT':   ch_params[ 'time_interval' ],
@@ -869,7 +869,7 @@ class CALimit( BiologicProgram ):
 
             params[ ch ] = {
                 'Voltage_step':      ch_params[ 'voltages' ],
-                'vs_inital':         [ ch_params[ 'vs_initial' ] ]* steps,
+                'vs_initial':        [ ch_params[ 'vs_initial' ] ]* steps,
                 'Duration_step':     ch_params[ 'durations' ],
                 'Step_number':       steps - 1,
                 'Record_every_dT':   ch_params[ 'time_interval' ],

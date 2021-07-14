@@ -19,6 +19,8 @@ import ctypes as c
 import platform
 import pkg_resources
 
+from .. import common
+
 
 class Device():
     """
@@ -78,6 +80,7 @@ class Device():
 
 
 #--- init ---
+
 # get platform architecture
 arch = platform.architecture()
 bits = arch[ 0 ]
@@ -87,7 +90,7 @@ logging.debug( '[ec_find] Running on {}-bit platform.'.format( bits ) )
 
 bits = '' if ( bits == 32 ) else '64'
 dll_file = os.path.join(
-    pkg_resources.resource_filename( 'easy_biologic', 'techniques' ),
+    common.technique_directory(),
     'blfind{}.dll'.format( bits )
 )
 __dll = c.WinDLL( dll_file )
@@ -160,7 +163,7 @@ def find_devices( connection = None ):
     # successful call
     # idn is filled with every character null terminated
     # so must remove evey other character
-    idn_len = range( len ( idn ) )
+    idn_len = range( len( idn ) )
 
     # check if odd positions are null terminators
     char_term = [
