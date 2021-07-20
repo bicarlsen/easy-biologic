@@ -267,11 +267,7 @@ Runs multiple MPP cycles, performing Voc and JV scans at the beginning of each.
 A convenience script for finding connected devices.
 
 #### Use
-1. Open a python shell.
-2. Import the Find Devices module. <br>
-`import easy_biologic.find_devices as fd`
-3. Run the program. <br>
-`fd.run()`
+From a terminal run `python -m easy_biologic.find_devices`.
 
 ## Low Level API
 The low level API gives direct control of the Biologic device using the provided DLL libraries. The subpackage contains five modules.
