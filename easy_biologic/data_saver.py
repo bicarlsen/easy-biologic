@@ -1,7 +1,21 @@
+import os
+
+
 class DataSaver():
 
 	def __init__():
-		pass
+        self.field_titles = []  # column names for saving data
+
+		self.write_attempts = 0
+        self._writes_failed = 0
+
+	
+	@property
+    def writes_failed(self):
+        """
+        :returns: Number of failed writes since last success.
+        """
+        return self._writes_failed
 
 
 	def save_data(
@@ -67,43 +81,6 @@ class DataSaver():
             # successful write
             # reset failed attempts
             self._writes_failed = 0
-
-        # drop data outside data window
-        self.trim_data()
-
-
-    def trim_data( self, window = None ):
-        """
-        Trims data to a specific length.
-
-        :param window: Dictionary of { channel: amount } for amount of data to save
-            of None to use self.data_window.
-            If amount is a non-negative integer, saves at most that many data points,
-                clearing data after each write to file.
-            If amount is None does not trim any data.
-            [Default: None]
-        :raises ValueError: If an invalid channel is provided as a window key.
-        """
-        if window is None:
-            window = self.data_window
-
-        # validate channels
-        invalid_channels = [ ch for ch in window.keys() if ch not in self.channels ]
-        if len( invalid_channels ) > 0:
-            raise ValueError( f'Invalid channel(s): {invalid_channels}' )
-
-        # trim data
-        for ch, ch_window in window.items():
-            if ch_window is None:
-                # don't trim data
-                continue
-
-            elif ch_window == 0:
-                # clear data
-                self._data[ ch ] = []
-
-            else:
-                self._data[ ch ] = self._data[ ch ][ -ch_window: ]
 
 
     def _save_data_together(

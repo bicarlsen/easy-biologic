@@ -323,7 +323,6 @@ class BiologicProgram( ABC ):
         pass
 
 
-    # TODO [1]: Move save functionality to its own class.
     def save_data(
         self,
         file,
