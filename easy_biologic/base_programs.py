@@ -1201,7 +1201,7 @@ class JV_Scan( BiologicProgram ):
             params[ ch ] = {
                 'vs_initial':   [ False ]* 5,
                 'Voltage_step': voltage_profile,
-                'Scan_Rate':    [ ch_params[ 'rate' ]* 10e-3 ]* 5,
+                'Scan_Rate':    [ ch_params[ 'rate' ] ]* 5,
                 'Scan_number':  2,
                 'Record_every_dE':   ch_params[ 'step' ],
                 'Average_over_dE':   ch_params[ 'average' ],
