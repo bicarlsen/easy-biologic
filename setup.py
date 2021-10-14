@@ -23,6 +23,7 @@ setuptools.setup(
     url = "",
     project_urls = project_urls,
     packages = setuptools.find_packages(),
+    python_requires = '>=3.7',
     classifiers = [
         "Programming Language :: Python :: 3",
         "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",

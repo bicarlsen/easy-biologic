@@ -817,6 +817,7 @@ class CALimit( BiologicProgram ):
 
         channels = kwargs[ 'channels' ] if ( 'channels' in kwargs ) else None
         params = set_defaults( params, defaults, channels )
+
         super().__init__(
             device,
             params,
@@ -1269,8 +1270,9 @@ class MPP_Tracking( CALimit ):
             self.v_mpp = { ch: init_vmpp for ch in channels }
             self.probe_steps = { ch: params[ 'probe_step' ] for ch in channels }
 
-            params[ 'durations' ] = params[ 'run_time' ]
             params[ 'voltages' ]  = [ init_vmpp ]
+            params[ 'durations' ] = params[ 'run_time' ]
+            params[ 'time_interval' ] = params[ 'record_interval' ]
 
 
         super().__init__(
