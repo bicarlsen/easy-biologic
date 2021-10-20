@@ -62,7 +62,7 @@ def parse( data, info, fields = None, device = None ):
     if isinstance( fields, tuple ):
         fields = fields[ info.ProcessIndex ]
 
-    if cols is 0:
+    if cols == 0:
         raise RuntimeError( 'No columns in data.' )
 
     # technique info

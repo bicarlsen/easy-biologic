@@ -519,15 +519,15 @@ def create_parameter( name, value, index = 0, kind = None ):
             raise TypeError( '[ec_lib] Invalid value type {}.'.format( val_kind ) )
 
     # define parameter
-    if kind is 'bool':
+    if kind == 'bool':
         create = BL_DefineBoolParameter
         value = c.c_bool( value )
 
-    elif kind is 'int':
+    elif kind == 'int':
         create = BL_DefineIntParameter
         value = c.c_int32( value )
 
-    elif kind is 'single':
+    elif kind == 'single':
         create = BL_DefineSglParameter
         value = c.c_float( value )
 
