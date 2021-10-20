@@ -200,8 +200,8 @@ Performs a JV scan.
 + **step:** Voltage step. 
 [Default: 0.01]
 
-+ **rate:** Scan rate in mV/s. 
-[Default: 10]
++ **rate:** Scan rate in V/s. 
+[Default: 0.01]
 
 + **average:** Average over points. 
 [Default: False]

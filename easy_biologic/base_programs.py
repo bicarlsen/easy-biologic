@@ -1154,7 +1154,7 @@ class JV_Scan( BiologicProgram ):
         defaults = {
             'start': 0,
             'step':  0.01,
-            'rate':  10,
+            'rate':  0.01,
             'average': False
         }
         channels = kwargs[ 'channels' ] if ( 'channels' in kwargs ) else None
@@ -1201,7 +1201,7 @@ class JV_Scan( BiologicProgram ):
             params[ ch ] = {
                 'vs_initial':   [ False ]* 5,
                 'Voltage_step': voltage_profile,
-                'Scan_Rate':    [ ch_params[ 'rate' ]* 1e-3 ]* 5,
+                'Scan_Rate':    [ ch_params[ 'rate' ] ]* 5,
                 'Scan_number':  2,
                 'Record_every_dE':   ch_params[ 'step' ],
                 'Average_over_dE':   ch_params[ 'average' ],
