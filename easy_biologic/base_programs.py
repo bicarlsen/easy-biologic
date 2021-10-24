@@ -745,34 +745,34 @@ class CP( BiologicProgram ):
         if i_max < 100e-12:
             i_range = ecl.IRange.p100
 
-        elif max_i < 1e-9:
+        elif i_max < 1e-9:
             i_range = ecl.IRange.n1
 
-        elif max_i < 10e-9:
+        elif i_max < 10e-9:
             i_range = ecl.IRange.n10
 
-        elif max_i < 100e-9:
+        elif i_max < 100e-9:
             i_range = ecl.IRange.n100
 
-        elif max_i < 1e-6:
+        elif i_max < 1e-6:
             i_range = ecl.IRange.u1
 
-        elif max_i < 10e-6:
+        elif i_max < 10e-6:
             i_range = ecl.IRange.u10
 
-        elif max_i < 100e-6:
+        elif i_max < 100e-6:
             i_range = ecl.IRange.u100
 
-        elif max_i < 1e-3:
+        elif i_max < 1e-3:
             i_range = ecl.IRange.m1
 
-        elif max_i < 10e-3:
+        elif i_max < 10e-3:
             i_range = ecl.IRange.m10
 
-        elif max_i < 100e-3:
+        elif i_max < 100e-3:
             i_range = ecl.IRange.m100
 
-        elif max_i <= 1:
+        elif i_max <= 1:
             i_range = ecl.IRange.a1
 
         else:

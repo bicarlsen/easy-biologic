@@ -75,6 +75,7 @@ from .lib import data_parser as dp
 
 
 DataSegment = namedtuple( 'DataSegment', [
+    # parsed data, raw info, raw data
     'data', 'info', 'values'
 ] )
 
@@ -463,13 +464,13 @@ class BiologicProgram( ABC ):
             self.device.disconnect()
 
 
-    def _run( self, technique, params, interval = 1, retrieve_data = True ):
+    def _run( self, technique, params, read_interval = 1, retrieve_data = True ):
         """
         Runs the program.
 
         :param technqiue: Name of technique.
         :param params: Technique parameters.
-        :param interval: Time between data fetches. [Default: 1]
+        :param read_interval: Time between data fetches. [Default: 1]
         :param retrieve_data: Whether data should be retrieved or not.
             self.field_values must be valid.
             [Default: True]
@@ -489,7 +490,7 @@ class BiologicProgram( ABC ):
         self.device.start_channels( self.channels )
 
         if retrieve_data:
-            asyncio.run( self._retrieve_data( interval ) )
+            asyncio.run( self._retrieve_data( read_interval ) )
 
             if self.autoconnect is True:
                 self._disconnect()
