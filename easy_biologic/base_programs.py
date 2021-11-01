@@ -740,7 +740,7 @@ class CP( BiologicProgram ):
         :param currents: List of currents.
         :returns: ec_lib.IRange corresponding to largest current.
         """
-        i_max = max( currents )
+        i_max = max( abs( currents ) )
 
         if i_max < 100e-12:
             i_range = ecl.IRange.p100
