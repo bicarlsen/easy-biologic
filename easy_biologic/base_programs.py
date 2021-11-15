@@ -567,11 +567,9 @@ class CA( BiologicProgram ):
         """
         Update voltage and duration parameters
         """
-        steps = len( voltages )
-
         params = {
             'Voltage_step': voltages,
-            'Step_number':  steps - 1
+            'Step_number':  len( voltages ) - 1
         }
 
         if durations is not None:

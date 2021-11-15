@@ -19,6 +19,10 @@
 #
 # **channel_info( idn, ch ):** Returns a ChannlInfo struct of the given device channel.
 #
+# **get_hardware_configuration( idn, ch ):** Returns a HarwareConf struct of the given device channel.
+#
+# **set_hardware_configuration( idn, ch ):** Sets the hardware configuration of the given device channel.
+#
 # **load_technique( idn, ch, technique, params, first = True, last = True, verbose = False ):**
 # Loads the technique with parameter on the given device channel.
 #
@@ -55,7 +59,10 @@
 # **ERange:** Voltage ranges. <br>
 # Values: [ v2_5, v5, v10, AUTO ]
 #
-# **ConnectionType:** Whether the device is floating or grounded. <br>
+# **ElectrodeConnection:** Whether the electrode is in standard or grounded mode. <br>
+# Values: [ STANDARD, GROUNDED ]
+#
+# **ChannelMode:** Whether the device is floating or grounded. <br>
 # Values: [ GROUNDED, FLOATING ]
 #
 # **TechniqueId:** ID of the technique. (Not fully implemented.) <br>
@@ -74,6 +81,9 @@
 #
 # **ChannelInfo:** Information representing a device channel. Used by `channel_info()`. <br>
 # Fields: [ Channel, BoardVersion, BoardSerialNumber, FirmwareVersion, XilinxVersion, AmpCode, NbAmps, Lcboard, Zboard, RESERVED, MemSize, State, MaxIRange, MinIRange, MaxBandwidth, NbOfTechniques ]
+#
+# **HardwareConf:** Information on the hardware configuration.
+# Fields: [ Conn, Ground ]
 #
 # **EccParam:** A technique parameter. <br>
 # Fields: [ ParamStr, ParamType, ParamVal, ParamIndex ]
@@ -213,10 +223,12 @@ class ERange( Enum ):
     AUTO = 3
 
 
-class ConnectionType( Enum ):
-    """
-    Connection types.
-    """
+class ElectrodeConnection( Enum ):
+    STANDARD = 0
+    GROUNDED = 1  # CE to ground
+
+
+class ChannelMode( Enum ):
     GROUNDED = 0
     FLOATING = 1
 
@@ -300,6 +312,16 @@ class ChannelInfo( c.Structure ):
         ( 'MaxBandwidth',       c.c_int32 ),
         ( 'NbOfTechniques',     c.c_int32 )
 
+    ]
+
+
+class HardwareConf( c.Structure ):
+    """
+    Stores information about the hardware configuration.
+    """
+    _fields_ = [
+        ( 'Conn',   c.c_int32 ),  # electrode connection
+        ( 'Ground', c.c_int32 )   # instument ground
     ]
 
 
@@ -414,6 +436,12 @@ BL_GetChannelsPlugged.restype = c.c_int32
 BL_GetChannelInfos = __dll[ 'BL_GetChannelInfos' ]
 BL_GetChannelInfos.restype = c.c_int32
 
+BL_GetHardConf = __dll[ 'BL_GetHardConf' ]
+BL_GetHardConf.restype = c.c_int32
+
+BL_SetHardConf = __dll[ 'BL_SetHardConf' ]
+BL_SetHardConf.restype = c.c_int32
+
 # technique functions
 
 BL_LoadTechnique = __dll[ 'BL_LoadTechnique' ]
@@ -464,6 +492,8 @@ methods = [
     BL_IsChannelPlugged,
     BL_GetChannelsPlugged,
     BL_GetChannelInfos,
+    BL_GetHardConf,
+    BL_SetHardConf,
 
     # technique functions
     BL_LoadTechnique,
@@ -842,6 +872,65 @@ def channel_info( idn, ch ):
     return info
 
 
+def get_hardware_configuration( idn, ch ):
+    """
+    Returns the hardware configuratiion of the specified channel.
+
+    :param idn: The device id.
+    :param ch: The channel.
+    :returns: HardwareConf structure.
+    """
+    idn = c.c_int32( idn )
+    ch  = c.c_uint8( ch )
+    conf = HardwareConf()
+
+    logging.debug( '[easy-biologic] Getting hardware configuration for channel {} on device {}.'.format( ch.value, idn.value ) )
+    err = BL_GetHardConf(
+        idn, ch, c.byref( conf )
+    )
+
+    validate( err )
+    return conf
+
+
+def set_hardware_configuration( idn, ch, mode, connection ):
+    """
+    Sets the hardware configuration.
+
+    :param idn: The device id.
+    :param ch: The channel.
+    :param mode: ChannelMode to set the instrument connection mode.
+    :param connection: ElectrodeConnection to set the electrode connection mode.
+    """
+    idn = c.c_int32( idn )
+    ch  = c.c_uint8( ch )
+
+    # validate connection parameters
+    if isinstance( mode, ChannelMode ):
+        mode = mode.value
+
+    elif mode not in [ 0, 1 ]:
+        raise ValueError( 'Invalid values for mode.' )
+
+    if isinstance( connection, ElectrodeConnection ):
+        connection = connection.value
+
+    elif connection not in [ 0, 1 ]:
+        raise ValueError( 'Invalid values for connection.' )
+
+    conf = HardwareConf(
+        Conn    = c.c_int32( mode ),
+        Ground  = c.c_int32( connection )
+    )
+
+    logging.debug( '[easy-biologic] Setting hardware configuration for channel {} on device {}.'.format( ch.value, idn.value ) )
+    err = BL_SetHardConf(
+        idn, ch, c.byref( conf )
+    )
+
+    validate( err )
+
+
 def load_technique(
     idn,
     ch,
@@ -1202,6 +1291,64 @@ async def channel_info_async( idn, ch ):
 
     validate( err )
     return info
+
+async def get_hardware_configuration_async( idn, ch ):
+    """
+    Returns the hardware configuratiion of the specified channel.
+
+    :param idn: The device id.
+    :param ch: The channel.
+    :returns: HardwareConf structure.
+    """
+    idn = c.c_int32( idn )
+    ch  = c.c_uint8( ch )
+    conf = HardwareConf()
+
+    logging.debug( '[easy-biologic] Getting hardware configuration for channel {} on device {}.'.format( ch.value, idn.value ) )
+    err = await BL_GetHardConf_async(
+        idn, ch, c.byref( conf )
+    )
+
+    validate( err )
+    return conf
+
+
+async def set_hardware_configuration_async( idn, ch, mode, connection ):
+    """
+    Sets the hardware configuration.
+
+    :param idn: The device id.
+    :param ch: The channel.
+    :param mode: ChannelMode to set the instrument connection mode.
+    :param connection: ElectrodeConnection to set the electrode connection mode.
+    """
+    idn = c.c_int32( idn )
+    ch  = c.c_uint8( ch )
+
+    # validate connection parameters
+    if isinstance( mode, ChannelMode ):
+        mode = mode.value
+
+    elif mode not in [ 0, 1 ]:
+        raise ValueError( 'Invalid values for mode.' )
+
+    if isinstance( connection, ElectrodeConnection ):
+        connection = connection.value
+
+    elif connection not in [ 0, 1 ]:
+        raise ValueError( 'Invalid values for connection.' )
+
+    conf = HardwareConf(
+        Conn    = c.c_int32( mode ),
+        Ground  = c.c_int32( connection )
+    )
+
+    logging.debug( '[easy-biologic] Setting hardware configuration for channel {} on device {}.'.format( ch.value, idn.value ) )
+    err = await BL_SetHardConf_async(
+        idn, ch, c.byref( conf )
+    )
+
+    validate( err )
 
 
 async def load_technique_async(

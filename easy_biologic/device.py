@@ -20,11 +20,17 @@ from .lib import ec_lib  as ecl
 
 # # Biologic Device
 
+HardwareConfiguration = namedtuple( 'HardwareConfiguration', [
+    'connection',  # electrode connection
+    'mode'  # channel mode
+] )
+
 
 TechParams = namedtuple( 'TechParams', [
     'technique',
     'parameters'
 ] )
+
 
 TechData = namedtuple( 'TechData', [
     'data',
@@ -116,13 +122,40 @@ class BiologicDevice:
         :returns: List of ChannelInfo objects.
         """
         if not self.is_connected():
-            # device not connected
             raise EcError( -1 )
 
         return [
             ecl.channel_info( self.idn, ch ) if available else None
             for ch, available in enumerate( self.plugged )
         ]
+
+
+    @property
+    def hardware_configuration( self ):
+        """
+        :returns: List of HardwareConf objects.
+        """
+        if not self.is_connected():
+            raise EcError( -1 )
+
+        if self.kind is not ecl.DeviceCodes.KBIO_DEV_SP300:
+            raise RuntimeError( 'Hardware configuration is only available for SP-300 devices.' )
+
+        confs = {
+            ch: ecl.get_hardware_configuration( self.idn, ch ) if available else None
+            for ch, available in enumerate( self.plugged )
+        }
+
+        confs = {
+            ch: HardwareConfiguration(
+                connection = ecl.ElectrodeConnection( conf.Conn ),
+                mode = ecl.ChannelMode( conf.Ground )
+            )
+            for ch, conf in confs.items()
+        }
+
+        return confs
+
 
     @property
     def techniques( self ):
@@ -214,6 +247,33 @@ class BiologicDevice:
             raise RuntimeError( 'Device is connected but does not have an id assigned.' )
 
         return connected
+
+
+    def channel_configuration( self, ch ):
+        """
+        :returns: HardwareConf object for the channel.
+        """
+        if not self.is_connected():
+            raise EcError( -1 )
+
+        return ecl.get_hardware_configuration( self.idn, ch ) if available else None
+
+
+    def set_channel_configuration( self, ch, mode, connection ):
+        """
+        Sets the hardware configuration for the given channel.
+
+        :param ch: Channel to set.
+        :param mode: ChannelMode.
+        :param connection: ElectrodeConnection.
+        """
+        if not self.is_connected():
+            raise EcError( -1 )
+
+        if self.kind is not ecl.DeviceCodes.KBIO_DEV_SP300:
+            raise RuntimeError( 'Hardware configuration is only available for SP-300 devices.' )
+
+        ecl.set_hardware_configuration( self.idn, ch, mode, connection )
 
 
     def load_technique(
