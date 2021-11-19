@@ -542,7 +542,6 @@ class CA( BiologicProgram ):
         params = {}
         for ch, ch_params in self.params.items():
             steps = len( ch_params[ 'voltages' ] )
-
             params[ ch ] = {
                 'Voltage_step':      ch_params[ 'voltages' ],
                 'vs_initial':        [ ch_params[ 'vs_initial' ] ]* steps,
@@ -566,24 +565,51 @@ class CA( BiologicProgram ):
     ):
         """
         Update voltage and duration parameters
+        
+        :param voltages: Dictionary of voltages keyed by channel,
+            or single voltage to apply to all channels.
+        :param durations: Dictionary of durations keyed by channel,
+            or single duration to apply to all channels.
+        :param vs_initial: Dictionary of vs. initials keyed by channel,
+            or single vs. initial boolean to apply to all channels.
         """
-        params = {
-            'Voltage_step': voltages,
-            'Step_number':  len( voltages ) - 1
-        }
+        # format params
+        if not isinstance( voltages, dict ):
+            # transform to dictionary if needed
+            voltages = { ch: voltages for ch in self.channels }
 
-        if durations is not None:
-            params[ 'Duration_step' ] = durations
+        if ( durations is not None ) and ( not isinstance( voltages, dict ) ):
+            # transform to dictionary if needed
+            durations = { ch: durations for ch in self.channels }
 
-        if vs_initial is not None:
-            params[ 'vs_initial' ] = vs_initial
+        if ( vs_initial is not None ) and ( not isinstance( vs_initial, dict ) ):
+            # transform to dictionary if needed
+            vs_initial = { ch: vs_initial for ch in self.channels }
 
-        self.device.update_parameters(
-            self.channel,
-            'ca',
-            params,
-            types = self._parameter_types
-        )
+        # update voltages
+        for ch, ch_voltages in voltages.items():
+            if not isinstance( ch_voltages, list ):
+                # single voltage given, add to list
+                ch_voltages = [ ch_voltages ]
+
+            steps = len( ch_voltages )
+            params = {
+                'Voltage_step': ch_voltages,
+                'Step_number':  steps - 1
+            }
+
+            if ( durations is not None ) and ( durations[ ch ] ):
+                params[ 'Duration_step' ] = durations[ ch ]
+
+            if ( vs_initial is not None ) and ( vs_initial[ ch ] ):
+                params[ 'vs_initial' ] = vs_initial[ ch ]
+
+            self.device.update_parameters(
+                ch,
+                'ca',
+                params,
+                types = self._parameter_types
+            )
 
 
 class CP( BiologicProgram ):
@@ -673,7 +699,6 @@ class CP( BiologicProgram ):
         params = {}
         for ch, ch_params in self.params.items():
             steps = len( ch_params[ 'currents' ] )
-
             params[ ch ] = {
                 'Current_step':      ch_params[ 'currents' ],
                 'vs_initial':        [ ch_params[ 'vs_initial' ] ]* steps,
@@ -697,38 +722,51 @@ class CP( BiologicProgram ):
     ):
         """
         Update current and duration parameters.
+
+        :param currents: Dictionary of currents keyed by channel,
+            or single current to apply to all channels.
+        :param durations: Dictionary of durations keyed by channel,
+            or single duration to apply to all channels.
+        :param vs_initial: Dictionary of vs. initials keyed by channel,
+            or single vs. initial boolean to apply to all channels.
         """
-        steps = len( currents )
+        # format params
+        if not isinstance( currents, dict ):
+            # transform to dictionary if needed
+            currents = { ch: currents for ch in self.channels }
 
-        params = {
-            'Current_step': currents,
-            'Step_number':  steps - 1
-        }
+        if ( durations is not None ) and ( not isinstance( voltages, dict ) ):
+            # transform to dictionary if needed
+            durations = { ch: durations for ch in self.channels }
 
-        if durations is not None:
-            params[ 'Duration_step' ] = durations
+        if ( vs_initial is not None ) and ( not isinstance( vs_initial, dict ) ):
+            # transform to dictionary if needed
+            vs_initial = { ch: vs_initial for ch in self.channels }
 
-        if vs_initial is not None:
-            params[ 'vs_initial' ] = vs_initial
+        # update voltages
+        for ch, ch_currents in currents.items():
+            if not isinstance( ch_currents, list ):
+                # single voltage given, add to list
+                ch_currents = [ ch_currents ]
 
-        # set current ranges
-        if isinstance( params, dict ):
-            for ch, ch_params in params.items():
-                ch_params[ 'current_range' ] = self._get_current_range(
-                    ch_params[ 'currents' ]
-                )
+            steps = len( ch_currents )
+            params = {
+                'Current_step': ch_currents,
+                'Step_number':  steps - 1
+            }
 
-        else:
-            params[ 'current_range' ] = self._get_current_range(
-                params[ 'currents' ]
+            if ( durations is not None ) and ( durations[ ch ] ):
+                params[ 'Duration_step' ] = durations[ ch ]
+
+            if ( vs_initial is not None ) and ( vs_initial[ ch ] ):
+                params[ 'vs_initial' ] = vs_initial[ ch ]
+
+            self.device.update_parameters(
+                ch,
+                'cp',
+                params,
+                types = self._parameter_types
             )
-
-        self.device.update_parameters(
-            self.channel,
-            'cp',
-            params,
-            types = self._parameter_types
-        )
 
 
     def _get_current_range( self, currents ):
@@ -865,7 +903,6 @@ class CALimit( BiologicProgram ):
         params = {}
         for ch, ch_params in self.params.items():
             steps = len( ch_params[ 'voltages' ] )
-
             params[ ch ] = {
                 'Voltage_step':      ch_params[ 'voltages' ],
                 'vs_initial':        [ ch_params[ 'vs_initial' ] ]* steps,
@@ -925,7 +962,6 @@ class CALimit( BiologicProgram ):
                 ch_voltages = [ ch_voltages ]
 
             steps = len( ch_voltages )
-
             params = {
                 'Voltage_step': ch_voltages,
                 'Step_number':  steps - 1

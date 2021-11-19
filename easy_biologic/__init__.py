@@ -2,7 +2,7 @@ import platform
 
 # check that on Windows
 if platform.system() != 'Windows':
-	raise RuntimeError( 'This library requires a Windows machine.' )
+	raise RuntimeError( 'Invalid Operating System: easy_biologic can only be used on Windows machines.' )
 
 
 from .device import BiologicDevice

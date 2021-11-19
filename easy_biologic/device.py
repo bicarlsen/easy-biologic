@@ -600,7 +600,7 @@ class BiologicDeviceAsync:
             )
 
         except EcError as err:
-            if err.value is -9:
+            if err.value == -9:
                 # ECLab firmware loaded
                 pass
 
