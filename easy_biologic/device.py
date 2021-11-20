@@ -251,12 +251,16 @@ class BiologicDevice:
 
     def channel_configuration( self, ch ):
         """
-        :returns: HardwareConf object for the channel.
+        :param ch: Channel to configure.
+        :returns: HardwareConf object for the channel or None if channel is not available.
         """
         if not self.is_connected():
             raise EcError( -1 )
 
-        return ecl.get_hardware_configuration( self.idn, ch ) if available else None
+        if not self.plugged[ ch ]:
+            return None
+
+        return ecl.get_hardware_configuration( self.idn, ch )
 
 
     def set_channel_configuration( self, ch, mode, connection ):
@@ -467,7 +471,7 @@ class BiologicDevice:
         """
         self.__idn        = None # device identifier
         self.__plugged    = None # list of plugged in channels
-        self.__techniques = None #list of channel techniques
+        self.__techniques = None # list of channel techniques
 
 
 
@@ -836,4 +840,4 @@ class BiologicDeviceAsync:
         """
         self.__idn        = None # device identifier
         self.__plugged    = None # list of plugged in channels
-        self.__techniques = None #list of channel techniques
+        self.__techniques = None # list of channel techniques
