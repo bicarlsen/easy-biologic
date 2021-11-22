@@ -566,11 +566,11 @@ class CA( BiologicProgram ):
         """
         Update voltage and duration parameters
         
-        :param voltages: Dictionary of voltages keyed by channel,
+        :param voltages: Dictionary of voltages list keyed by channel,
             or single voltage to apply to all channels.
-        :param durations: Dictionary of durations keyed by channel,
+        :param durations: Dictionary of durations list keyed by channel,
             or single duration to apply to all channels.
-        :param vs_initial: Dictionary of vs. initials keyed by channel,
+        :param vs_initial: Dictionary of vs. initials list keyed by channel,
             or single vs. initial boolean to apply to all channels.
         """
         # format params
@@ -723,11 +723,11 @@ class CP( BiologicProgram ):
         """
         Update current and duration parameters.
 
-        :param currents: Dictionary of currents keyed by channel,
+        :param currents: Dictionary of currents list keyed by channel,
             or single current to apply to all channels.
-        :param durations: Dictionary of durations keyed by channel,
+        :param durations: Dictionary of durations list keyed by channel,
             or single duration to apply to all channels.
-        :param vs_initial: Dictionary of vs. initials keyed by channel,
+        :param vs_initial: Dictionary of vs. initials list keyed by channel,
             or single vs. initial boolean to apply to all channels.
         """
         # format params
@@ -935,11 +935,11 @@ class CALimit( BiologicProgram ):
         """
         Update voltage and duration parameters.
 
-        :param voltages: Dictionary of voltages keyed by channel,
+        :param voltages: Dictionary of voltages list keyed by channel,
             or single voltage to apply to all channels.
-        :param durations: Dictionary of durations keyed by channel,
+        :param durations: Dictionary of durations list keyed by channel,
             or single duration to apply to all channels.
-        :param vs_initial: Dictionary of vs. initials keyed by channel,
+        :param vs_initial: Dictionary of vs. initials list keyed by channel,
             or single vs. initial boolean to apply to all channels.
         """
         # format params
@@ -958,7 +958,7 @@ class CALimit( BiologicProgram ):
         # update voltages
         for ch, ch_voltages in voltages.items():
             if not isinstance( ch_voltages, list ):
-                # single voltage given, add to list
+                # single voltage given, make list
                 ch_voltages = [ ch_voltages ]
 
             steps = len( ch_voltages )
