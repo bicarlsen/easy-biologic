@@ -927,7 +927,7 @@ def set_hardware_configuration( idn, ch, mode, connection ):
 
     logging.debug( '[easy-biologic] Setting hardware configuration for channel {} on device {}.'.format( ch.value, idn.value ) )
     err = BL_SetHardConf(
-        idn, ch, c.byref( conf )
+        idn, ch, conf
     )
 
     validate( err )

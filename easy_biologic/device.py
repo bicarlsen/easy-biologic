@@ -142,16 +142,8 @@ class BiologicDevice:
             raise RuntimeError( 'Hardware configuration is only available for SP-300 devices.' )
 
         confs = {
-            ch: ecl.get_hardware_configuration( self.idn, ch ) if available else None
+            ch: self.channel_configuration( ch ) if available else None
             for ch, available in enumerate( self.plugged )
-        }
-
-        confs = {
-            ch: HardwareConfiguration(
-                connection = ecl.ElectrodeConnection( conf.Conn ),
-                mode = ecl.ChannelMode( conf.Ground )
-            )
-            for ch, conf in confs.items()
         }
 
         return confs
@@ -260,7 +252,11 @@ class BiologicDevice:
         if not self.plugged[ ch ]:
             return None
 
-        return ecl.get_hardware_configuration( self.idn, ch )
+        conf = ecl.get_hardware_configuration( self.idn, ch )
+        return HardwareConfiguration(
+            connection = ecl.ElectrodeConnection( conf.Conn ),
+            mode = ecl.ChannelMode( conf.Ground )
+        )
 
 
     def set_channel_configuration( self, ch, mode, connection ):
