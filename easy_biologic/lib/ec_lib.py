@@ -319,8 +319,6 @@ class HardwareConf( c.Structure ):
     """
     Stores information about the hardware configuration.
     """
-    _pack_ = 4
-
     _fields_ = [
         ( 'Conn',   c.c_int32 ),  # electrode connection
         ( 'Ground', c.c_int32 )   # instrument ground
