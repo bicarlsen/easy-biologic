@@ -919,8 +919,8 @@ def set_hardware_configuration( idn, ch, mode, connection ):
         raise ValueError( 'Invalid values for connection.' )
 
     conf = HardwareConf(
-        Conn    = c.c_int32( mode ),
-        Ground  = c.c_int32( connection )
+        Conn    = c.c_int32( connection ),  # electrode connection
+        Ground  = c.c_int32( mode )  # channel mode / instrument ground
     )
 
     logging.debug( '[easy-biologic] Setting hardware configuration for channel {} on device {}.'.format( ch.value, idn.value ) )
@@ -1339,8 +1339,8 @@ async def set_hardware_configuration_async( idn, ch, mode, connection ):
         raise ValueError( 'Invalid values for connection.' )
 
     conf = HardwareConf(
-        Conn    = c.c_int32( mode ),
-        Ground  = c.c_int32( connection )
+        Conn    = c.c_int32( connection ),  # electrode connection
+        Ground  = c.c_int32( mode )  # channel mode / instrument ground
     )
 
     logging.debug( '[easy-biologic] Setting hardware configuration for channel {} on device {}.'.format( ch.value, idn.value ) )
