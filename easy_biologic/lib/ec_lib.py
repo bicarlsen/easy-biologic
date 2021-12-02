@@ -1345,7 +1345,7 @@ async def set_hardware_configuration_async( idn, ch, mode, connection ):
 
     logging.debug( '[easy-biologic] Setting hardware configuration for channel {} on device {}.'.format( ch.value, idn.value ) )
     err = await BL_SetHardConf_async(
-        idn, ch, c.byref( conf )
+        idn, ch, conf
     )
 
     validate( err )
