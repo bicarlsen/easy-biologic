@@ -565,7 +565,7 @@ class BiologicDeviceAsync:
 
 
     @property
-    def hardware_configuration( self ):
+    async def hardware_configuration( self ):
         """
         :returns: List of HardwareConf objects.
         """
@@ -578,7 +578,7 @@ class BiologicDeviceAsync:
         # collect channel configurations for available channels
         available_chs = []
         ch_confs = []
-        for ch, available in enumerate( self.plugged )
+        for ch, available in enumerate( self.plugged ):
             if available:
                 available_chs.appned( ch )
                 ch_confs.append( self.channel_configuration( ch ) )
