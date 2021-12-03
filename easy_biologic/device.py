@@ -1,16 +1,12 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# # Biologic Device
+# Biologic Device
 # Library for connecting to and controlling a Biologic device.
-
-# # API
 
 
 import asyncio
-import logging
 import ctypes as c
-import platform
 from collections import namedtuple
 
 from .lib.ec_errors import EcError
@@ -41,7 +37,7 @@ TechData = namedtuple( 'TechData', [
 
 class BiologicDevice:
     """
-    Represents a Biologic Device
+    Represents a Biologic Device.
     """
 
     def __init__(
@@ -486,7 +482,7 @@ class BiologicDevice:
 
 class BiologicDeviceAsync:
     """
-    Represents a Biologic Device
+    Represents a Biologic Device.
     """
 
     async def __init__(
