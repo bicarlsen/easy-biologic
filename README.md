@@ -36,6 +36,10 @@ Represents an instance of a Biologic Device.
 
 + **channel_info( ch ):** Returns information about the given channel.
 
++ **channel_configuration( ch ):** Returns configuration information of the channel.
+
++ **set_channel_configuration( ch, mode, conneciton ):** Sets the channel's hardware configuration.
+
 + **get_values( ch ):** Returns current values of the given channel.
 
 + **get_data( ch ):** Returns buffered data of the given channel.
@@ -48,6 +52,7 @@ Represents an instance of a Biologic Device.
 + **info:** DeviceInfo structure.
 + **plugged:** List of available channels. 
 + **channels:** List of ChannelInfo structures.
++ **hardware_configuration:** Dictionary of HardwareConfiguration for each channel.
 + **techniques:** List of TechParams loaded on each channel.
 
 ### Biologic Program
@@ -288,6 +293,10 @@ Contains methods converting the `BL_*` DLL functions for use, enumeration classe
 
 + **channel_info( idn, ch ):** Returns a ChannelInfo struct of the given device channel.
 
++ **get_hardware_configuration( idn, ch ):** Returns a HarwareConf struct of the given device channel.
+
++ **set_hardware_configuration( idn, ch, mode, connection ):** Sets the hardware configuration of the given device channel.
+
 + **load_technique( idn, ch, technique, params, first = True, last = True, verbose = False ):** 
 Loads the technique with parameter on the given device channel.
 
@@ -324,7 +333,10 @@ Values: [ p100, n1, n10, n100, u1, u10, u100, m1, m10, m100, a1, KEEP, BOOSTER, 
 + **ERange:** Voltage ranges. <br>
 Values: [ v2_5, v5, v10, AUTO ]
 
-+ **ConnectionType:** Whether the device is floating or grounded. <br>
++ **ElectrodeConnection:** Whether the electrode is in standard or grounded mode.<br>
+Values: [ STANDARD, GROUNDED ]
+
++ **ChannelMode:** Whether the device is floating or grounded. <br>
 Values: [ GROUNDED, FLOATING ]
 
 + **TechniqueId:** ID of the technique. (Not fully implemented.) <br>
@@ -343,6 +355,9 @@ Fields: [ DeviceCode, RAMSize, CPU, NumberOfChannles, NumberOfSlots, FirmwareVer
 
 + **ChannelInfo:** Information representing a device channel. Used by `channel_info()`. <br>
 Fields: [ Channel, BoardVersion, BoardSerialNumber, FirmwareVersion, XilinxVersion, AmpCode, NbAmps, Lcboard, Zboard, RESERVED, MemSize, State, MaxIRange, MinIRange, MaxBandwidth, NbOfTechniques ]
+
++ **HardwareConf:** Hardware configuration information for a channel.<br>
+Fields: [ Conn, Ground ]
 
 + **EccParam:** A technique parameter. <br>
 Fields: [ ParamStr, ParamType, ParamVal, ParamIndex ]

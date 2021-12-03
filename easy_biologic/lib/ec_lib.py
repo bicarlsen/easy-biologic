@@ -21,7 +21,7 @@
 #
 # **get_hardware_configuration( idn, ch ):** Returns a HarwareConf struct of the given device channel.
 #
-# **set_hardware_configuration( idn, ch ):** Sets the hardware configuration of the given device channel.
+# **set_hardware_configuration( idn, ch, mode, connection ):** Sets the hardware configuration of the given device channel.
 #
 # **load_technique( idn, ch, technique, params, first = True, last = True, verbose = False ):**
 # Loads the technique with parameter on the given device channel.
