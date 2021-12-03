@@ -121,8 +121,7 @@ class BiologicDevice:
         """
         :returns: List of ChannelInfo objects.
         """
-        if not self.is_connected():
-            raise EcError( -1 )
+        self._validate_connection()
 
         return [
             ecl.channel_info( self.idn, ch ) if available else None
@@ -135,8 +134,7 @@ class BiologicDevice:
         """
         :returns: List of HardwareConf objects.
         """
-        if not self.is_connected():
-            raise EcError( -1 )
+        self._validate_connection()
 
         if self.kind is not ecl.DeviceCodes.KBIO_DEV_SP300:
             raise RuntimeError( 'Hardware configuration is only available for SP-300 devices.' )
@@ -201,14 +199,11 @@ class BiologicDevice:
 
     def disconnect( self ):
         """
-        Disconnect form the device.
+        Disconnect from the device.
         """
-        if self.idn is None:
-            raise RuntimeError( 'Device is not connected.' )
-
+        self._validate_connection()
         ecl.disconnect( self.idn )
-
-        self.__init_variables() # reset vairables
+        self.__init_variables()  # reset vairables
 
 
     def populate_info( self ):
@@ -225,7 +220,7 @@ class BiologicDevice:
 
         :returns: Boolean descirbing the state of connection.
         """
-        if not self.idn:
+        if self.idn is None:
             return False
 
         connected = ecl.is_connected( self.idn )
@@ -244,10 +239,9 @@ class BiologicDevice:
     def channel_configuration( self, ch ):
         """
         :param ch: Channel to configure.
-        :returns: HardwareConf object for the channel or None if channel is not available.
+        :returns: HardwareConfiguration of the channel, or None if channel is not available.
         """
-        if not self.is_connected():
-            raise EcError( -1 )
+        self._validate_connection()
 
         if not self.plugged[ ch ]:
             return None
@@ -267,8 +261,7 @@ class BiologicDevice:
         :param mode: ChannelMode.
         :param connection: ElectrodeConnection.
         """
-        if not self.is_connected():
-            raise EcError( -1 )
+        self._validate_connection()
 
         if self.kind is not ecl.DeviceCodes.KBIO_DEV_SP300:
             raise RuntimeError( 'Hardware configuration is only available for SP-300 devices.' )
@@ -297,10 +290,7 @@ class BiologicDevice:
             to cast parameters, or None if no casting is desired.
             [Default: None]
         """
-        if self.idn is None:
-            # not connected
-            raise RuntimeError( 'Device not connected.')
-
+        self._validate_connection()
         first = ( index == 0 )
 
         if types is not None:
@@ -331,6 +321,8 @@ class BiologicDevice:
             to cast parameters, or None if no casting is desired.
             [Default: None]
         """
+        self._validate_connection()
+
         for index, technique in enumerate( techniques ):
             params = parameters[ index ]
             last = ( index == len( techniques ) - 1 )
@@ -366,6 +358,8 @@ class BiologicDevice:
             to cast parameters, or None if no casting is desired.
             [Default: None]
         """
+        self._validate_connection()
+
         ecc_params = ecl.create_parameters( parameters, index, types )
 
         ecl.update_parameters(
@@ -382,6 +376,7 @@ class BiologicDevice:
 
         :param ch: Channel to start.
         """
+        self._validate_connection()
         ecl.start_channel( self.idn, ch )
 
 
@@ -392,6 +387,7 @@ class BiologicDevice:
         :param chs: List of channels to start, or None to start all.
             [Default: None]
         """
+        self._validate_connection()
         if chs is None:
             # start all channels
             chs = list( range( self.info.NumberOfChannels ) )
@@ -405,6 +401,7 @@ class BiologicDevice:
 
         :param ch: Channel to stop.
         """
+        self._validate_connection()
         ecl.stop_channel( self.idn, ch )
 
 
@@ -415,6 +412,7 @@ class BiologicDevice:
         :param chs: List of channels to stop, or None to stop all.
             [Default: None]
         """
+        self._validate_connection()
         if chs is None:
             # stop all channels
             chs = list( range( self.info.NumberOfChannels ) )
@@ -429,8 +427,9 @@ class BiologicDevice:
         :param ch: The channel to probe.
         :returns: ChannelInfo.
         """
+        self._validate_connection()
+        
         info = ecl.channel_info( self.idn, ch )
-
         return info
 
 
@@ -441,8 +440,9 @@ class BiologicDevice:
         :param ch: Channel.
         :returns: A dictionary of key-value pairs.
         """
-        values = ecl.get_values( self.idn, ch )
+        self._validate_connection()
 
+        values = ecl.get_values( self.idn, ch )
         return values
 
 
@@ -454,12 +454,25 @@ class BiologicDevice:
         :param ch: Channel.
         :returns: TechData object with properties [ data, info, value ].
         """
+        self._validate_connection()
 
         raw = await ecl.get_data_async( self.idn, ch )
         return TechData( *raw )
 
 
     #--- private methods ---
+
+
+    def _validate_connection( self ):
+        """
+        :returns: True if the device has an id assigned.
+        :raises: RuntimeError if device does not have an id assigned.
+        """
+        if self.idn is None:
+            raise RuntimeError( 'Device is not connected.' )
+
+        return True
+
 
     def __init_variables( self ):
         """
@@ -525,12 +538,11 @@ class BiologicDeviceAsync:
         :returns: Device model.
         :raises: RuntimeError if no device is connected at the connection string.
         """
-        devs = ecf.find_devices()
-        for device in devs:
-            if self.address == device.connection_string:
-                return device.kind
+        if self.info is None:
+            # Device has not yet been connected
+            raise RuntimeError( 'Device must have been connected before retrieving info.' )
 
-        raise RuntimeError( 'No device found at {}.'.format( self.address ) )
+        return ecl.DeviceCodes( self.info.DeviceCode )
 
 
     @property
@@ -554,9 +566,7 @@ class BiologicDeviceAsync:
         """
         :returns: List of ChannelInfo objects.
         """
-        if not self.is_connected():
-            # device not connected
-            raise EcError( -1 )
+        self._validate_connection()
 
         return [
             ecl.channel_info( self.idn, ch ) if available else None
@@ -567,10 +577,10 @@ class BiologicDeviceAsync:
     @property
     async def hardware_configuration( self ):
         """
-        :returns: List of HardwareConf objects.
+        :returns: Dictionary of HardwareConfigurations for each channel,
+            or None if the channel is not available.
         """
-        if not self.is_connected():
-            raise EcError( -1 )
+        self._validate_connection()
 
         if self.kind is not ecl.DeviceCodes.KBIO_DEV_SP300:
             raise RuntimeError( 'Hardware configuration is only available for SP-300 devices.' )
@@ -652,12 +662,9 @@ class BiologicDeviceAsync:
         """
         Disconnect form the device.
         """
-        if self.idn is None:
-            raise RuntimeError( 'Device is not connected.' )
-
+        self._validate_connection()
         await ecl.disconnect_async( self.idn )
-
-        self.__init_variables() # reset vairables
+        self.__init_variables()  # reset vairables
 
 
     async def populate_info( self ):
@@ -674,7 +681,7 @@ class BiologicDeviceAsync:
 
         :returns: Boolean descirbing the state of connection.
         """
-        if not self.idn:
+        if self.idn is None:
             return False
 
         return await ecl.is_connected_async( self.idn )
@@ -685,8 +692,7 @@ class BiologicDeviceAsync:
         :param ch: Channel to configure.
         :returns: HardwareConf object for the channel or None if channel is not available.
         """
-        if not self.is_connected():
-            raise EcError( -1 )
+        self._validate_connection()
 
         if not self.plugged[ ch ]:
             return None
@@ -706,8 +712,7 @@ class BiologicDeviceAsync:
         :param mode: ChannelMode.
         :param connection: ElectrodeConnection.
         """
-        if not self.is_connected():
-            raise EcError( -1 )
+        self._validate_connection()
 
         if self.kind is not ecl.DeviceCodes.KBIO_DEV_SP300:
             raise RuntimeError( 'Hardware configuration is only available for SP-300 devices.' )
@@ -736,10 +741,7 @@ class BiologicDeviceAsync:
             to cast parameters, or None if no casting is desired.
             [Default: None]
         """
-        if self.idn is None:
-            # not connected
-            raise RuntimeError( 'Device not connected.')
-
+        self._validate_connection()
         first = ( index == 0 )
 
         if types is not None:
@@ -770,6 +772,8 @@ class BiologicDeviceAsync:
             to cast parameters, or None if no casting is desired.
             [Default: None]
         """
+        self._validate_connection()
+
         for index, technique in enumerate( techniques ):
             params = parameters[ index ]
             last = ( index == len( techniques ) - 1 )
@@ -805,6 +809,8 @@ class BiologicDeviceAsync:
             to cast parameters, or None if no casting is desired.
             [Default: None]
         """
+        self._validate_connection()
+
         ecc_params = await ecl.create_parameters_async( parameters, index, types )
 
         await ecl.update_parameters_async(
@@ -821,6 +827,7 @@ class BiologicDeviceAsync:
 
         :param ch: Channel to start.
         """
+        self._validate_connection()
         await ecl.start_channel_async( self.idn, ch )
 
 
@@ -831,6 +838,8 @@ class BiologicDeviceAsync:
         :param chs: List of channels to start, or None to start all.
             [Default: None]
         """
+        self._validate_connection()
+        
         if chs is None:
             # start all channels
             chs = list( range( self.info.NumberOfChannels ) )
@@ -844,6 +853,7 @@ class BiologicDeviceAsync:
 
         :param ch: Channel to stop.
         """
+        self._validate_connection()
         await ecl.stop_channel_async( self.idn, ch )
 
 
@@ -854,6 +864,7 @@ class BiologicDeviceAsync:
         :param chs: List of channels to stop, or None to stop all.
             [Default: None]
         """
+        self._validate_connection()
         if chs is None:
             # stop all channels
             chs = list( range( self.info.NumberOfChannels ) )
@@ -868,8 +879,9 @@ class BiologicDeviceAsync:
         :param ch: The channel to probe.
         :returns: ChannelInfo.
         """
+        self._validate_connection()
+        
         info = await ecl.channel_info_async( self.idn, ch )
-
         return info
 
 
@@ -880,8 +892,9 @@ class BiologicDeviceAsync:
         :param ch: Channel.
         :returns: A dictionary of key-value pairs.
         """
+        self._validate_connection()
+        
         values = await ecl.get_values_async( self.idn, ch )
-
         return values
 
 
@@ -893,12 +906,25 @@ class BiologicDeviceAsync:
         :param ch: Channel.
         :returns: TechData object with properties [ data, info, value ].
         """
+        self._validate_connection()
 
         ( data, info, values ) = await ecl.get_data_async( self.idn, ch )
         return TechData( data, info, values )
 
 
     #--- private methods ---
+
+
+    def _validate_connection( self ):
+        """
+        :returns: True if the device has an id assigned.
+        :raises: RuntimeError if device does not have an id assigned.
+        """
+        if self.idn is None:
+            raise RuntimeError( 'Device is not connected.' )
+
+        return True
+
 
     def __init_variables( self ):
         """
