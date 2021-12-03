@@ -680,8 +680,18 @@ class BiologicDeviceAsync:
         if self.idn is None:
             return False
 
-        return await ecl.is_connected_async( self.idn )
+        connected = await ecl.is_connected_async( self.idn )
 
+        # update state
+        if not connected:
+            self.__init_variables()
+
+        elif self.idn is None:
+            # connected but id is None
+            raise RuntimeError( 'Device is connected but does not have an id assigned.' )
+
+        return connected
+        
 
     async def channel_configuration( self, ch ):
         """
