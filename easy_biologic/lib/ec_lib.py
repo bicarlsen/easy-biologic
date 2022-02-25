@@ -394,6 +394,54 @@ class DataInfo( c.Structure ):
     ]
 
 
+
+
+
+VMP3_FAMILY = (
+    "VMP2",
+    "VMP3",
+    "BISTAT",
+    "BISTAT2",
+    "MCS_200",
+    "VSP",
+    "SP50",
+    "SP150",
+    "FCT50S",
+    "FCT150S",
+    "CLB500",
+    "CLB2000",
+    "HCP803",
+    "HCP1005",
+    "MPG2",
+    "MPG205",
+    "MPG210",
+    "MPG220",
+    "MPG240",
+    "VMP3E",
+    "VSP3E",
+    "SP50E",
+    "SP150E",
+)
+
+#------------------------------------------------------------------------------#
+
+VMP300_FAMILY = (
+    "SP100",
+    "SP200",
+    "SP300",
+    "VSP300",
+    "VMP300",
+    "SP240",
+    "BP300",
+)
+
+#------------------------------------------------------------------------------#
+
+
+
+
+
+
 # ## DLL Methods
 
 
@@ -1598,7 +1646,7 @@ def technique_file( technique, device = None ):
 
     if (
         device is not None and
-        device is DeviceCodes.KBIO_DEV_SP300 and
+        device not in VMP3_FAMILY and
         not technique.endswith( sp300_mod )
     ):
         # modify technqiues for SP-300 devices

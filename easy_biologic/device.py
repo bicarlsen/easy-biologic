@@ -293,7 +293,7 @@ class BiologicDevice:
             params = ecl.cast_parameters( params, types )
 
         ecc_params = ecl.create_parameters( params, index )
-        technique = ecl.technique_file( technique, self.kind )
+        #technique = ecl.technique_file( technique, self.kind )
 
         ecl.load_technique(
             self.idn, ch, technique, ecc_params, first, last
@@ -916,8 +916,8 @@ class BiologicDeviceAsync:
 
         ( data, info, values ) = await ecl.get_data_async( self.idn, ch )
         return TechData( data, info, values )
-
-
+    
+    
     #--- private methods ---
 
 
@@ -939,3 +939,7 @@ class BiologicDeviceAsync:
         self.__idn        = None # device identifier
         self.__plugged    = None # list of plugged in channels
         self.__techniques = None # list of channel techniques
+
+
+
+    
