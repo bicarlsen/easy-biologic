@@ -1037,6 +1037,7 @@ def update_parameters( idn, ch, technique, params, index = 0, device = None ):
     ch  = c.c_uint8( ch )
 
     technique = technique_file( technique, device )
+    print("technique file : " + technique)
     technique = c.create_string_buffer( technique.encode( 'utf-8' ) )
     index = c.c_int32( index )
 
@@ -1643,10 +1644,12 @@ def technique_file( technique, device = None ):
     """
     file_type = '.ecc'
     sp300_mod = '4'
-
+    
+    
+    
     if (
         device is not None and
-        device not in VMP3_FAMILY and
+        str(device).split("_")[-1].upper() in VMP300_FAMILY and
         not technique.endswith( sp300_mod )
     ):
         # modify technqiues for SP-300 devices
@@ -1655,5 +1658,5 @@ def technique_file( technique, device = None ):
     if not technique.endswith( file_type ):
         # append file type extenstion if needed
         technique += file_type
-
+    
     return technique.lower()

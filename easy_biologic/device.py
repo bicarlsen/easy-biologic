@@ -293,7 +293,7 @@ class BiologicDevice:
             params = ecl.cast_parameters( params, types )
 
         ecc_params = ecl.create_parameters( params, index )
-        #technique = ecl.technique_file( technique, self.kind )
+        technique = ecl.technique_file( technique, self.kind )
 
         ecl.load_technique(
             self.idn, ch, technique, ecc_params, first, last
