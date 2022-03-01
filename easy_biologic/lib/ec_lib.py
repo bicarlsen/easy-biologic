@@ -1649,7 +1649,7 @@ def technique_file( technique, device = None ):
     
     if (
         device is not None and
-        str(device).split("_")[-1].upper() in VMP300_FAMILY and
+        isInSP300Family(device) and
         not technique.endswith( sp300_mod )
     ):
         # modify technqiues for SP-300 devices
@@ -1660,3 +1660,15 @@ def technique_file( technique, device = None ):
         technique += file_type
     
     return technique.lower()
+
+
+def isInSP300Family(device):
+    """
+    Tel if the device is in the SP300 (VMP_300) family or not 
+    
+    :param device: Kind of device.
+    :returns: Boolean
+    """
+    
+    return str(device).split("_")[-1].upper() in VMP300_FAMILY
+    

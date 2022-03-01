@@ -47,16 +47,15 @@ def parse( data, info, fields = None, device = None ):
     rows = info.NbRows
     cols = info.NbCols
     technique = ecl.TechniqueId( info.TechniqueID )
-
+    
     if fields is None and device is not None:
+        print("definiton de fileds")
         fields = (
             SP300_Fields[ technique ]
-            if str(device).split("_")[-1].upper() in ecl.VMP300_FAMILY
+            if ecl.isInSP300Family(device.kind)
             else VMP3_Fields[ technique ]
         )
-    
-    
-    
+        
     if fields is None and device is None:
         raise ValueError( 'Both fields and device not defined.' )
 
