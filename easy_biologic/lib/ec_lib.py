@@ -1033,7 +1033,6 @@ def update_parameters( idn, ch, technique, params, index = 0, device = None ):
     ch  = c.c_uint8( ch )
 
     technique = technique_file( technique, device )
-    print("technique file : " + technique)
     technique = c.create_string_buffer( technique.encode( 'utf-8' ) )
     index = c.c_int32( index )
 
