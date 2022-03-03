@@ -423,7 +423,6 @@ VMP3_FAMILY = (
     "SP150E",
 )
 
-#------------------------------------------------------------------------------#
 
 VMP300_FAMILY = (
     "SP100",
@@ -434,9 +433,6 @@ VMP300_FAMILY = (
     "SP240",
     "BP300",
 )
-
-#------------------------------------------------------------------------------#
-
 
 
 
@@ -1649,7 +1645,7 @@ def technique_file( technique, device = None ):
     
     if (
         device is not None and
-        isInSP300Family(device) and
+        is_in_SP300_family(device) and
         not technique.endswith( sp300_mod )
     ):
         # modify technqiues for SP-300 devices
@@ -1662,12 +1658,12 @@ def technique_file( technique, device = None ):
     return technique.lower()
 
 
-def isInSP300Family(device):
+def is_in_SP300_family(device):
     """
-    Tel if the device is in the SP300 (VMP_300) family or not 
+    Tel if the device is in the SP300 (VMP_300) family or not.
     
     :param device: Kind of device.
-    :returns: Boolean
+    :returns: Whether the device is in the SP300 family or not.
     """
     
     return str(device).split("_")[-1].upper() in VMP300_FAMILY

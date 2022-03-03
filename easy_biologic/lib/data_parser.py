@@ -49,10 +49,9 @@ def parse( data, info, fields = None, device = None ):
     technique = ecl.TechniqueId( info.TechniqueID )
     
     if fields is None and device is not None:
-        print("definiton de fileds")
         fields = (
             SP300_Fields[ technique ]
-            if ecl.isInSP300Family(device.kind)
+            if ecl.is_in_SP300_family(device.kind)
             else VMP3_Fields[ technique ]
         )
         

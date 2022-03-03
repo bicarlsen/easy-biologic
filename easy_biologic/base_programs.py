@@ -424,7 +424,7 @@ class OCV( BiologicProgram ):
 
         self._data_fields = (
             dp.SP300_Fields.OCV
-            if ecl.isInSP300Family(self.device.kind) else
+            if ecl.is_in_SP300_family(self.device.kind) else
             dp.VMP3_Fields.OCV
         )
 
@@ -503,7 +503,7 @@ class CA( BiologicProgram ):
         self._parameter_types = tfs.CA
         self._data_fields = (
             dp.SP300_Fields.CA
-            if ecl.isInSP300Family(self.device.kind)
+            if ecl.is_in_SP300_family(self.device.kind)
             else dp.VMP3_Fields.CA
         )
        
@@ -660,7 +660,7 @@ class CP( BiologicProgram ):
         self._parameter_types = tfs.CP
         self._data_fields = (
             dp.SP300_Fields.CP
-            if ecl.isInSP300Family(self.device.kind)
+            if ecl.is_in_SP300_family(self.device.kind)
             else dp.VMP3_Fields.CP
         )
 
@@ -864,7 +864,7 @@ class CALimit( BiologicProgram ):
         self._parameter_types = tfs.CALIMIT
         self._data_fields = (
             dp.SP300_Fields.CALIMIT
-            if ecl.isInSP300Family(self.device.kind)
+            if ecl.is_in_SP300_family(self.device.kind)
             else dp.VMP3_Fields.CALIMIT
         )
 
@@ -1050,7 +1050,7 @@ class PEIS( BiologicProgram ):
         self._parameter_types = tfs.PEIS
         self._data_fields = (
             dp.SP300_Fields.PEIS
-            if ecl.isInSP300Family(self.device.kind)
+            if ecl.is_in_SP300_family(self.device.kind)
             else dp.VMP3_Fields.PEIS
         )
         
@@ -1204,7 +1204,7 @@ class JV_Scan( BiologicProgram ):
         self._parameter_types = tfs.CV
         self._data_fields = (
             dp.SP300_Fields.CV
-            if ecl.isInSP300Family(self.device.kind)
+            if ecl.is_in_SP300_family(self.device.kind)
             else dp.VMP3_Fields.CV
         )
 
