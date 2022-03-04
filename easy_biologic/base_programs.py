@@ -424,7 +424,7 @@ class OCV( BiologicProgram ):
 
         self._data_fields = (
             dp.SP300_Fields.OCV
-            if self.device.kind is ecl.DeviceCodes.KBIO_DEV_SP300 else
+            if ecl.is_in_SP300_family(self.device.kind) else
             dp.VMP3_Fields.OCV
         )
 
@@ -503,10 +503,10 @@ class CA( BiologicProgram ):
         self._parameter_types = tfs.CA
         self._data_fields = (
             dp.SP300_Fields.CA
-            if self.device.kind is ecl.DeviceCodes.KBIO_DEV_SP300
+            if ecl.is_in_SP300_family(self.device.kind)
             else dp.VMP3_Fields.CA
         )
-
+       
         self.field_titles = [
             'Time [s]',
             'Voltage [V]',
@@ -660,7 +660,7 @@ class CP( BiologicProgram ):
         self._parameter_types = tfs.CP
         self._data_fields = (
             dp.SP300_Fields.CP
-            if self.device.kind is ecl.DeviceCodes.KBIO_DEV_SP300
+            if ecl.is_in_SP300_family(self.device.kind)
             else dp.VMP3_Fields.CP
         )
 
@@ -864,7 +864,7 @@ class CALimit( BiologicProgram ):
         self._parameter_types = tfs.CALIMIT
         self._data_fields = (
             dp.SP300_Fields.CALIMIT
-            if self.device.kind is ecl.DeviceCodes.KBIO_DEV_SP300
+            if ecl.is_in_SP300_family(self.device.kind)
             else dp.VMP3_Fields.CALIMIT
         )
 
@@ -1050,7 +1050,7 @@ class PEIS( BiologicProgram ):
         self._parameter_types = tfs.PEIS
         self._data_fields = (
             dp.SP300_Fields.PEIS
-            if self.device.kind is ecl.DeviceCodes.KBIO_DEV_SP300
+            if ecl.is_in_SP300_family(self.device.kind)
             else dp.VMP3_Fields.PEIS
         )
         
@@ -1204,7 +1204,7 @@ class JV_Scan( BiologicProgram ):
         self._parameter_types = tfs.CV
         self._data_fields = (
             dp.SP300_Fields.CV
-            if self.device.kind is ecl.DeviceCodes.KBIO_DEV_SP300
+            if ecl.is_in_SP300_family(self.device.kind)
             else dp.VMP3_Fields.CV
         )
 

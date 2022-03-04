@@ -509,7 +509,8 @@ class BiologicProgram( ABC ):
             parsed = dp.parse(
                 raw.data,
                 raw.info,
-                self._data_fields
+                self._data_fields,
+                self.device
             )
 
         except RuntimeError as err:

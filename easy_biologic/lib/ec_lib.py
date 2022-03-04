@@ -394,6 +394,50 @@ class DataInfo( c.Structure ):
     ]
 
 
+
+
+
+VMP3_FAMILY = (
+    "VMP2",
+    "VMP3",
+    "BISTAT",
+    "BISTAT2",
+    "MCS_200",
+    "VSP",
+    "SP50",
+    "SP150",
+    "FCT50S",
+    "FCT150S",
+    "CLB500",
+    "CLB2000",
+    "HCP803",
+    "HCP1005",
+    "MPG2",
+    "MPG205",
+    "MPG210",
+    "MPG220",
+    "MPG240",
+    "VMP3E",
+    "VSP3E",
+    "SP50E",
+    "SP150E",
+)
+
+
+VMP300_FAMILY = (
+    "SP100",
+    "SP200",
+    "SP300",
+    "VSP300",
+    "VMP300",
+    "SP240",
+    "BP300",
+)
+
+
+
+
+
 # ## DLL Methods
 
 
@@ -1595,10 +1639,12 @@ def technique_file( technique, device = None ):
     """
     file_type = '.ecc'
     sp300_mod = '4'
-
+    
+    
+    
     if (
         device is not None and
-        device is DeviceCodes.KBIO_DEV_SP300 and
+        is_in_SP300_family(device) and
         not technique.endswith( sp300_mod )
     ):
         # modify technqiues for SP-300 devices
@@ -1607,5 +1653,17 @@ def technique_file( technique, device = None ):
     if not technique.endswith( file_type ):
         # append file type extenstion if needed
         technique += file_type
-
+    
     return technique.lower()
+
+
+def is_in_SP300_family(device):
+    """
+    Tel if the device is in the SP300 (VMP_300) family or not.
+    
+    :param device: Kind of device.
+    :returns: Whether the device is in the SP300 family or not.
+    """
+    
+    return str(device).split("_")[-1].upper() in VMP300_FAMILY
+    

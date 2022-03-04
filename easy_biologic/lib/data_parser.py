@@ -54,8 +54,8 @@ def parse( data, info, fields = None, device = None ):
     if fields is None:
         # get fields from device
         fields = (
-            SP300_Fields[ techinque ]
-            if device.kind is ecl.DeviceCodes.KBIO_DEV_SP300
+            SP300_Fields[ technique ]
+            if ecl.is_in_SP300_family(device.kind)
             else VMP3_Fields[ technique ]
         )
 
