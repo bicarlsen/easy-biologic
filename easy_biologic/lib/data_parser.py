@@ -55,8 +55,8 @@ def parse( data, info, fields = None, device = None ):
         # get fields from device
         fields = (
             SP300_Fields[ technique ]
-            if ecl.is_in_SP300_family(device.kind)
-            else VMP3_Fields[ technique ]
+            if ecl.is_in_SP300_family( device.kind ) else
+            VMP3_Fields[ technique ]
         )
 
     if isinstance( fields, tuple ):

@@ -424,7 +424,7 @@ class OCV( BiologicProgram ):
 
         self._data_fields = (
             dp.SP300_Fields.OCV
-            if ecl.is_in_SP300_family(self.device.kind) else
+            if ecl.is_in_SP300_family( self.device.kind ) else
             dp.VMP3_Fields.OCV
         )
 
@@ -503,8 +503,8 @@ class CA( BiologicProgram ):
         self._parameter_types = tfs.CA
         self._data_fields = (
             dp.SP300_Fields.CA
-            if ecl.is_in_SP300_family(self.device.kind)
-            else dp.VMP3_Fields.CA
+            if ecl.is_in_SP300_family( self.device.kind ) else
+            dp.VMP3_Fields.CA
         )
        
         self.field_titles = [
@@ -660,8 +660,8 @@ class CP( BiologicProgram ):
         self._parameter_types = tfs.CP
         self._data_fields = (
             dp.SP300_Fields.CP
-            if ecl.is_in_SP300_family(self.device.kind)
-            else dp.VMP3_Fields.CP
+            if ecl.is_in_SP300_family( self.device.kind ) else
+            dp.VMP3_Fields.CP
         )
 
         self.field_titles = [
@@ -864,8 +864,8 @@ class CALimit( BiologicProgram ):
         self._parameter_types = tfs.CALIMIT
         self._data_fields = (
             dp.SP300_Fields.CALIMIT
-            if ecl.is_in_SP300_family(self.device.kind)
-            else dp.VMP3_Fields.CALIMIT
+            if ecl.is_in_SP300_family( self.device.kind ) else
+            dp.VMP3_Fields.CALIMIT
         )
 
         self.field_titles = [
@@ -1050,8 +1050,8 @@ class PEIS( BiologicProgram ):
         self._parameter_types = tfs.PEIS
         self._data_fields = (
             dp.SP300_Fields.PEIS
-            if ecl.is_in_SP300_family(self.device.kind)
-            else dp.VMP3_Fields.PEIS
+            if ecl.is_in_SP300_family( self.device.kind ) else
+            dp.VMP3_Fields.PEIS
         )
         
         self.field_titles = [
@@ -1204,8 +1204,8 @@ class JV_Scan( BiologicProgram ):
         self._parameter_types = tfs.CV
         self._data_fields = (
             dp.SP300_Fields.CV
-            if ecl.is_in_SP300_family(self.device.kind)
-            else dp.VMP3_Fields.CV
+            if ecl.is_in_SP300_family( self.device.kind ) else
+            dp.VMP3_Fields.CV
         )
 
         self.field_titles = [ 'Voltage [V]', 'Current [A]', 'Power [W]' ]
