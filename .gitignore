@@ -5,3 +5,4 @@ _old/
 __pycache__
 *.egg-info/
 tests/
+test_VSP300.py
