@@ -1,8 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# # EC Errors
-
+# EC Errors
 
 class EcError( Exception ):
     """
@@ -39,6 +38,11 @@ class EcError( Exception ):
         -12: (
             'ERR_GEN_FUNCTIONINPROGRESS',
             'Function of the library already in progress.'
+        ),
+
+        -102: (
+            'ERR_INSTR_TOOMANYDATA',
+            'Too many data to transfer from the instrument (device error)'
         ),
 
         -200: (
@@ -104,13 +108,9 @@ class EcError( Exception ):
                 ( code, message ) = EcError.errors[ value ]
 
             except KeyError as err:
-                raise ValueError( 'Unknown error value {}.'.format( value ) )
+                raise ValueError( f'Unknown error value {value}.' )
 
-            out = '{code} ({value}): {message}'.format(
-                value = value,
-                code = code,
-                message = message
-            )
+            out = f'{code} ({value}): {message}'
 
         else:
             # no error value

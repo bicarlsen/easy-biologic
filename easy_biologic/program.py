@@ -370,7 +370,6 @@ class BiologicProgram( ABC ):
                     write_header = self._write_header
                 )
 
-
         except Exception as err:
             self._writes_failed += 1
 
@@ -578,7 +577,7 @@ class BiologicProgram( ABC ):
 
                 break
 
-            await asyncio.sleep( interval ) # wait
+            await asyncio.sleep( interval )  # wait
 
             # retrieve data
             active_channels = [ ch for ch, done in complete.items() if ( not done ) ]

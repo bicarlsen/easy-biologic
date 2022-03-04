@@ -832,7 +832,7 @@ class CALimit( BiologicProgram ):
         :param device: BiologicDevice.
         :param params: Program parameters.
             Params are
-            voltages: List of voltages.
+            voltages: List of voltages in Volts.
             durations: List of times in seconds.
             vs_initial: If step is vs. initial or previous.
                 [Default: False]
