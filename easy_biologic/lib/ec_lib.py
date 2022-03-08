@@ -1661,4 +1661,4 @@ def is_in_SP300_family( device_code ):
     :param device_code: DeviceCode.
     :returns: Whether the device is in the SP300 (VMP_300) family or not.
     """
-    return ( device in SP300_DEVICE_FAMILY )
+    return ( device_code in SP300_DEVICE_FAMILY )
