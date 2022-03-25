@@ -318,10 +318,12 @@ Updates the paramters of a technique on teh given device channel.
 
 + **get_values( idn, ch ):** Gets the current values and states of the given device channel.
 
-+ **raise_exception( err ):** Raises an exception based on a calls error code. 
++ **raise_exception( err ):** Raises an exception based on a calls error code.
+
++ **is\_in\_SP300\_family( device_code ):** Determines if the given device is in the SP300 device family.
 
 #### Enum Classes
-+ **DeviceCodes:** Device code for identifying model. <br>
++ **DeviceCodes:** Device code for identifying model.<br>
 Values: [ KBIO_DEV_VMP, KBIO_DEV_VMP2, KBIO_DEV_MPG, KBIO_DEV_BISTAT, KBIO_DEV_MCS_200, KBIO_DEV_VMP3, KBIO_DEV_VSP, KBIO_DEV_HCP803, KBIO_DEV_EPP400, KBIO_DEV_EPP4000, KBIO_DEV_BISTAT2, KBIO_DEV_FCT150S, KBIO_DEV_VMP300, KBIO_DEV_SP50, KBIO_DEV_SP150, KBIO_DEV_FCT50S, KBIO_DEV_SP300, KBIO_DEV_CLB500, KBIO_DEV_HCP1005, KBIO_DEV_CLB2000, KBIO_DEV_VSP300, KBIO_DEV_SP200, KBIO_DEV_MPG2, KBIO_DEV_ND1, KBIO_DEV_ND2, KBIO_DEV_ND3, KBIO_DEV_ND4, KBIO_DEV_SP240, KBIO_DEV_MPG205, KBIO_DEV_MPG210, KBIO_DEV_MPG220, KBIO_DEV_MPG240, KBIO_DEV_UNKNOWN ]
 
 + **DeviceCodeDescriptions:** Description of DeviceCodes. <br>
@@ -370,6 +372,13 @@ Fields: [ State, MemFilled, TimeBase, Ewe, EweRangeMin, EweRangeMax, Ece, EceRan
 
 + **DataInfo:** Metadata of measured data. <br>
 Fields: [ IRQskipped, NbRows, NbCols, TechniqueIndex, TechniqueID, processIndex, loop, StartTime, MuxPad ]
+
+#### Constants
++ **VMP3_DEVICE_FAMILY:** Set of DeviceCodes in the VMP3 device family.<br>
+{ DeviceCodes.KBIO_DEV_VMP2, DeviceCodes.KBIO_DEV_VMP3, DeviceCodes.KBIO_DEV_BISTAT, DeviceCodes.KBIO_DEV_BISTAT2, DeviceCodes.KBIO_DEV_MCS_200, DeviceCodes.KBIO_DEV_VSP, DeviceCodes.KBIO_DEV_SP50, DeviceCodes.KBIO_DEV_SP150, DeviceCodes.KBIO_DEV_FCT50S, DeviceCodes.KBIO_DEV_FCT150S, DeviceCodes.KBIO_DEV_CLB500, DeviceCodes.KBIO_DEV_CLB2000, DeviceCodes.KBIO_DEV_HCP803, DeviceCodes.KBIO_DEV_HCP1005, DeviceCodes.KBIO_DEV_MPG2, DeviceCodes.KBIO_DEV_MPG205, DeviceCodes.KBIO_DEV_MPG210, DeviceCodes.KBIO_DEV_MPG220, DeviceCodes.KBIO_DEV_MPG240 }
+
++ **SP300_DEVICE_FAMILY:** Set of DeviceCodes in the SP300 device family.<br>
+{ DeviceCodes.KBIO_DEV_SP200, DeviceCodes.KBIO_DEV_SP300, DeviceCodes.KBIO_DEV_VSP300, DeviceCodes.KBIO_DEV_VMP300, DeviceCodes.KBIO_DEV_SP240 }
 
 ### Data Parser
 Parses data received from a technique and contains technique fields for different device types.
