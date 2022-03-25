@@ -20,13 +20,17 @@ def technique_directory( version = None ):
 
     return rdir
 
+
 def default_techniques_version():
     """
     :returns: Default version of techniques.
     """
-    version_file = pkg_resources.resource_filename( 'easy_biologic', f'techniques_version.json' )
+    version_file = pkg_resources.resource_filename(
+        'easy_biologic',
+        'techniques_version.json'
+    )
+
     try:
-        raise RuntimeError()
         with open( version_file ) as vf:
             info = json.load( vf )
             default_version = info[ 'version' ]
@@ -37,7 +41,7 @@ def default_techniques_version():
 
         # get technique directories
         # DANGER: Relies on this file being at same level as technique folders.
-        # TODO [1]: Make finding root dir mor robust.
+        # TODO [1]: Make finding root dir more robust.
         _root_dir = os.path.normpath( os.path.join( __file__, '..' ) )
         tech_dirs = [
             tdir

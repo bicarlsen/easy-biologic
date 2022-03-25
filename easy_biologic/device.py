@@ -14,7 +14,7 @@ from .lib import ec_find as ecf
 from .lib import ec_lib  as ecl
 
 
-# # Biologic Device
+# Biologic Device
 
 HardwareConfiguration = namedtuple( 'HardwareConfiguration', [
     'connection',  # electrode connection
@@ -939,7 +939,3 @@ class BiologicDeviceAsync:
         self.__idn        = None # device identifier
         self.__plugged    = None # list of plugged in channels
         self.__techniques = None # list of channel techniques
-
-
-
-    

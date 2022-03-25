@@ -110,8 +110,8 @@ from enum import Enum
 from .ec_errors import EcError
 from .. import common
 
-# ## Constants
 
+# Constants
 
 class DeviceCodes( Enum ):
     """
@@ -205,7 +205,7 @@ class IRange( Enum ):
     m1   = 7
     m10  = 8
     m100 = 9
-    a1   = 10 # 1 amp
+    a1   = 10  # 1 amp
 
     KEEP    = -1
     BOOSTER = 11
@@ -219,7 +219,6 @@ class ERange( Enum ):
     v2_5 = 0
     v5   = 1
     v10  = 2
-
     AUTO = 3
 
 
@@ -393,53 +392,53 @@ class DataInfo( c.Structure ):
         ( 'MuxPad',          c.c_int32  )
     ]
 
+# device families
+
+# TODO [2]: Incorporate unknown device codes
+# Should also include
+# VMP3E, VSP3E, SP50E, SP150E
+# but do not have their device codes.
+VMP3_DEVICE_FAMILY = {
+    DeviceCodes.KBIO_DEV_VMP2,
+    DeviceCodes.KBIO_DEV_VMP3,
+    DeviceCodes.KBIO_DEV_BISTAT,
+    DeviceCodes.KBIO_DEV_BISTAT2,
+    DeviceCodes.KBIO_DEV_MCS_200,
+    DeviceCodes.KBIO_DEV_VSP,
+    DeviceCodes.KBIO_DEV_SP50,
+    DeviceCodes.KBIO_DEV_SP150,
+    DeviceCodes.KBIO_DEV_FCT50S,
+    DeviceCodes.KBIO_DEV_FCT150S,
+    DeviceCodes.KBIO_DEV_CLB500,
+    DeviceCodes.KBIO_DEV_CLB2000,
+    DeviceCodes.KBIO_DEV_HCP803,
+    DeviceCodes.KBIO_DEV_HCP1005,
+    DeviceCodes.KBIO_DEV_MPG2,
+    DeviceCodes.KBIO_DEV_MPG205,
+    DeviceCodes.KBIO_DEV_MPG210,
+    DeviceCodes.KBIO_DEV_MPG220,
+    DeviceCodes.KBIO_DEV_MPG240
+}
+
+    
+# TODO [2]: Incorporate unknown device codes
+# Should also include
+# SP100, BP300
+# but do not have their device codes.
+SP300_DEVICE_FAMILY = {
+    DeviceCodes.KBIO_DEV_SP200,
+    DeviceCodes.KBIO_DEV_SP300,
+    DeviceCodes.KBIO_DEV_VSP300,
+    DeviceCodes.KBIO_DEV_VMP300,
+    DeviceCodes.KBIO_DEV_SP240
+}
+
+# TODO [2]: Incorporate unknown device codes.
+# Do not know which family these belong to.
+# KBIO_DEV_VMP, KBIO_DEV_MPG, KBIO_DEV_EPP400, KBIO_DEV_EPP4000
 
 
-
-
-VMP3_FAMILY = (
-    "VMP2",
-    "VMP3",
-    "BISTAT",
-    "BISTAT2",
-    "MCS_200",
-    "VSP",
-    "SP50",
-    "SP150",
-    "FCT50S",
-    "FCT150S",
-    "CLB500",
-    "CLB2000",
-    "HCP803",
-    "HCP1005",
-    "MPG2",
-    "MPG205",
-    "MPG210",
-    "MPG220",
-    "MPG240",
-    "VMP3E",
-    "VSP3E",
-    "SP50E",
-    "SP150E",
-)
-
-
-VMP300_FAMILY = (
-    "SP100",
-    "SP200",
-    "SP300",
-    "VSP300",
-    "VMP300",
-    "SP240",
-    "BP300",
-)
-
-
-
-
-
-# ## DLL Methods
-
+# DLL Methods
 
 #--- init ---
 
@@ -1657,13 +1656,9 @@ def technique_file( technique, device = None ):
     return technique.lower()
 
 
-def is_in_SP300_family(device):
+def is_in_SP300_family( device_code ):
     """
-    Tel if the device is in the SP300 (VMP_300) family or not.
-    
-    :param device: Kind of device.
-    :returns: Whether the device is in the SP300 family or not.
+    :param device_code: DeviceCode.
+    :returns: Whether the device is in the SP300 (VMP_300) family or not.
     """
-    
-    return str(device).split("_")[-1].upper() in VMP300_FAMILY
-    
+    return ( device_code in SP300_DEVICE_FAMILY )

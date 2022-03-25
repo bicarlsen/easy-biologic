@@ -44,20 +44,20 @@ def parse( data, info, fields = None, device = None ):
     :param device: BioLogic device. Necessary if fields are not defined.
     :returns: A list of namedtuples representing the data.
     """
+    if ( fields is None ) and ( device is None ):
+        raise ValueError( 'Both fields and device are None, at least one must be defined.' )
+
     rows = info.NbRows
     cols = info.NbCols
     technique = ecl.TechniqueId( info.TechniqueID )
-    
-    if fields is None and device is not None:
+
+    if fields is None:
+        # get fields from device
         fields = (
             SP300_Fields[ technique ]
-            if ecl.is_in_SP300_family(device.kind)
-            else VMP3_Fields[ technique ]
+            if ecl.is_in_SP300_family( device.kind ) else
+            VMP3_Fields[ technique ]
         )
-        
-    if fields is None and device is None:
-        raise ValueError( 'Both fields and device not defined.' )
-
 
     if isinstance( fields, tuple ):
         fields = fields[ info.ProcessIndex ]
@@ -79,7 +79,8 @@ def parse( data, info, fields = None, device = None ):
 
     # group data
     parsed = [
-        Datum( *data[ i : i + cols ] ) for i in range( 0, rows* cols, cols )
+        Datum( *data[ i : i + cols ] )
+        for i in range( 0, rows* cols, cols )
     ]
 
     return parsed
