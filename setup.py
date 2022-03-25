@@ -2,15 +2,15 @@ import setuptools
 
 
 # get __version__
-exec( open( 'thot/_version.py' ).read() )
+exec( open( 'easy_biologic/_version.py' ).read() )
 
 with open("README.md", "r") as fh:
     long_description = fh.read()
 
 
 project_urls = {
-    'Source Code':      'https://github.com/bicarlsen/easy-biologic',
-    'Bug Tracker':      'https://github.com/bicarlsen/easy-biologic/issues'
+    'Source Code': 'https://github.com/bicarlsen/easy-biologic',
+    'Bug Tracker': 'https://github.com/bicarlsen/easy-biologic/issues'
 }
 
 
