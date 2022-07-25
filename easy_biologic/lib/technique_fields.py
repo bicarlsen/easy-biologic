@@ -97,3 +97,22 @@ class PEIS( Enum ):
     Average_N_times      = int
     Correction           = bool
     Wait_for_steady      = float
+
+class GEIS( Enum ):
+    vs_initial           = bool
+    vs_final             = bool
+    Initial_Current_step = float
+    Final_Current_step   = float
+    Duration_step        = float
+    Step_number          = int
+    Record_every_dT      = float
+    Record_every_dV      = float
+    Final_frequency      = float
+    Initial_frequency    = float
+    sweep                = bool
+    Amplitude_Current    = float
+    Frequency_number     = int
+    Average_N_times      = int
+    Correction           = bool
+    Wait_for_steady      = float
+    I_Range              = int
