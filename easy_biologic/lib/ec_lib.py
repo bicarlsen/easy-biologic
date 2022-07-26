@@ -111,7 +111,7 @@ import os
 import asyncio
 import ctypes as c
 import platform
-import pkg_resources
+# import pkg_resources
 from enum import Enum
 
 from .ec_errors import EcError
@@ -849,17 +849,17 @@ def init_channels( idn, chs, force_reload = False, bin_file = None, xlx_file = N
         )
     )
 
-    logging.debug( '[easy-biologic] Initializing channels {} on device {}.'.format( chs, idn.value ) )
+    logging.debug( f'[easy-biologic] Initializing channels {chs} on device {idn.value}.' )
     err = BL_LoadFirmware(
-            idn,
-            c.byref( active ),
-            c.byref( results ),
-            length,
-            show_gauge,
-            force_reload,
-            bin_file,
-            xlx_file
-        )
+        idn,
+        c.byref( active ),
+        c.byref( results ),
+        length,
+        show_gauge,
+        force_reload,
+        bin_file,
+        xlx_file
+    )
 
     validate( err )
 
@@ -1595,8 +1595,7 @@ async def get_data_async( idn, ch ):
     return ( data, info, values )
 
 
-# ## Helper Functions
-
+# Helper Functions
 
 def validate( err ):
     """
@@ -1646,8 +1645,6 @@ def technique_file( technique, device = None ):
     """
     file_type = '.ecc'
     sp300_mod = '4'
-    
-    
     
     if (
         device is not None and

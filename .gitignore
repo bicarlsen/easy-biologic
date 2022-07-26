@@ -4,5 +4,7 @@ build/
 _old/
 __pycache__
 *.egg-info/
-tests/
-test_VSP300.py
+tests/data
+tests/log*
+tests/test
+tests/*.ipynb

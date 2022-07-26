@@ -25,6 +25,11 @@ class EcError( Exception ):
             'Function failed.'
         ),
 
+        -7: (
+            'ERR_GEN_NOCHANNELSELECTED',
+            'No channel selected'
+        ),
+
         -9: (
             'ERR_GEN_ECLAB_LOADED',
             'ECLab firmware laoded on instrument.'
