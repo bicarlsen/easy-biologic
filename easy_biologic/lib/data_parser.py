@@ -175,6 +175,32 @@ class VMP3_Fields():
     )
 
 
+    GEIS = (
+        [  # process == 0
+            FI( 't_high',  INT32  ),
+            FI( 't_low',   INT32  ),
+            FI( 'voltage', SINGLE ),
+            FI( 'current', SINGLE )
+        ],
+        [  # process == 1
+            FI( 'frequency',           SINGLE ),
+            FI( 'abs_voltage',         SINGLE ),
+            FI( 'abs_current',         SINGLE ),
+            FI( 'impendance_phase',    SINGLE ),
+            FI( 'voltage',             SINGLE ),
+            FI( 'current',             SINGLE ),
+            FI( 'empty1',              INT32  ),
+            FI( 'abs_voltage_ce',      SINGLE ),
+            FI( 'abs_current_ce',      SINGLE ),
+            FI( 'impendance_ce_phase', SINGLE ),
+            FI( 'voltage_ce',          SINGLE ),
+            FI( 'empty2',              INT32  ),
+            FI( 'empty3',              INT32  ),
+            FI( 'time',                SINGLE )
+        ]
+    )    
+
+
 class SP300_Fields():
     """
     Holds technique field definitions.
@@ -213,6 +239,31 @@ class SP300_Fields():
     ]
 
     PEIS = (
+        [  # process == 0
+            FI( 't_high',  INT32  ),
+            FI( 't_low',   INT32  ),
+            FI( 'voltage', SINGLE ),
+            FI( 'current', SINGLE )
+        ],
+        [  # process == 1
+            FI( 'frequency',           SINGLE ),
+            FI( 'abs_voltage',         SINGLE ),
+            FI( 'abs_current',         SINGLE ),
+            FI( 'impendance_phase',    SINGLE ),
+            FI( 'voltage',             SINGLE ),
+            FI( 'current',             SINGLE ),
+            FI( 'empty1',              INT32  ),
+            FI( 'abs_voltage_ce',      SINGLE ),
+            FI( 'abs_current_ce',      SINGLE ),
+            FI( 'impendance_ce_phase', SINGLE ),
+            FI( 'voltage_ce',          SINGLE ),
+            FI( 'empty2',              INT32  ),
+            FI( 'empty3',              INT32  ),
+            FI( 'time',                SINGLE )
+        ]
+    )
+
+    GEIS = (
         [  # process == 0
             FI( 't_high',  INT32  ),
             FI( 't_low',   INT32  ),

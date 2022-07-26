@@ -68,7 +68,7 @@
 # Values: [ GROUNDED, FLOATING ]
 #
 # **TechniqueId:** ID of the technique. (Not fully implemented.) <br>
-# Values: [ NONE, OCV, CA, CP, CV, PEIS, CALIMIT ]
+# Values: [ NONE, OCV, CA, CP, CV, PEIS, GEIS, CALIMIT ]
 #
 # **ChannelState:** State of the channel. <br>
 # Values: [ STOP, RUN, PAUSE ]
@@ -249,6 +249,7 @@ class TechniqueId( Enum ):
     CP    = 102 # chrono-potentiometry
     CV    = 103 # cyclic voltammetry
     PEIS  = 104 # potentio electrochemical impedance
+    GEIS  = 107 # galvano electrochemical impedance
 
     CALIMIT = 157 # chrono-amperometry with limits
 

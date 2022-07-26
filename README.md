@@ -193,6 +193,43 @@ Contains basic implementations of BiologicPrograms.
 + **wait:** Adds a delay before the measurement at each frequency. The delay is expressed as a fraction of the period. 
 [Default: 0]
     
+#### GEIS
+Performs a Galvanostatic Electrochemical Impedance Spectroscopy
+
+##### Params
++ **current:** Initial current in Ampere.
+
++ **amplitude_current:** Sinus amplitude in Ampere.
+
++ **initial_frequency**: Initial frequency in Hertz.
+       
++ **final_frequency:** Final frequency in Hertz.
+
++ **frequency_number:** Number of frequencies.
+
++ **duration:** Overall duration in seconds.
+
++ **vs_initial:** If step is vs. initial or previous. 
+[Default: False]
+
++ **time_interval:** Maximum time interval between points in seconds. 
+[Default: 1]
+
++ **current_interval:** Maximum time interval between points in Amps. 
+[Default: 0.001]
+
++ **sweep:** Defines whether the spacing between frequencies is logarithmic ('log') or linear ('lin'). 
+[Default: 'log'] 
+
++ **repeat:** Number of times to repeat the measurement and average the values for each frequency. 
+[Default: 1]
+
++ **correction:** Drift correction. 
+[Default: False]
+
++ **wait:** Adds a delay before the measurement at each frequency. The delay is expressed as a fraction of the period. 
+[Default: 0]
+    
 #### JV_Scan
 Performs a JV scan.
 
@@ -210,7 +247,7 @@ Performs a JV scan.
 
 + **average:** Average over points. 
 [Default: False]
- 
+
 
 #### MPP_Tracking
 Performs MPP tracking.

@@ -84,6 +84,43 @@
 #
 # **wait:** Adds a delay before the measurement at each frequency. The delayis expressed as a fraction of the period. [Default: 0]
 #
+# #### GEIS
+# ##### Params
+# + **current:** Initial current in Ampere.
+#
+# + **amplitude_current:** Sinus amplitude in Ampere.
+#
+# + **initial_frequency**: Initial frequency in Hertz.
+#
+# + **final_frequency:** Final frequency in Hertz.
+#
+# + **frequency_number:** Number of frequencies.
+#
+# + **duration:** Overall duration in seconds.
+#
+# + **vs_initial:** If step is vs. initial or previous. 
+# [Default: False]
+#
+# + **time_interval:** Maximum time interval between points in seconds. 
+# [Default: 1]
+#
+# + **current_interval:** Maximum time interval between points in Amps. 
+# [Default: 0.001]
+#
+# + **sweep:** Defines whether the spacing between frequencies is logarithmic ('log') or linear ('lin'). 
+# [Default: 'log'] 
+#
+# + **repeat:** Number of times to repeat the measurement and average the values for each frequency. 
+# [Default: 1]
+#
+# + **correction:** Drift correction. 
+# [Default: False]
+#
+# + **wait:** Adds a delay before the measurement at each frequency. The delay is expressed as a fraction of the period. 
+# [Default: 0]
+#
+# + **irange:** Specifies the current range of the measurement. 0 = 100 pA, 10 = 1 A, the numbers in between is for each order of magnitude 
+#
 # ## JV_Scan
 # Performs a JV scan.
 #
@@ -1162,6 +1199,241 @@ class PEIS( BiologicProgram ):
         # run technique
         data = self._run( 'peis', params, retrieve_data = retrieve_data )
 
+class GEIS( BiologicProgram ):
+    """
+    Runs Galvano Electrochemical Impedance Spectroscopy technique.
+    """
+
+    def __init__(
+        self,
+        device,
+        params,
+        **kwargs
+    ):
+        """
+        :param device: BiologicDevice.
+        :param params: Program parameters.
+            Params are
+            current: Initial current in Ampere.
+            amplitude_current: Sinus amplitude in Ampere.
+            initial_frequency: Initial frequency in Hertz.
+            final_frequency: Final frequency in Hertz.
+            frequency_number: Number of frequencies.
+            duration: Overall duration in seconds. # Comment: Isn't this really a step duration?
+            vs_initial: If step is vs. initial or previous.
+                [Default: False]
+            time_interval: Maximum time interval between points in seconds.
+                [Default: 1]
+            potential_interval: Maximum interval between points in Volts.
+                [Default: 0.001]
+            sweep: Defines whether the spacing between frequencies is logarithmic
+                ('log') or linear ('lin'). [Default: 'log']
+            repeat: Number of times to repeat the measurement and average the values
+                for each frequency. [Default: 1]
+            correction: Drift correction. [Default: False]
+            wait: Adds a delay before the measurement at each frequency. The delay
+                is expressed as a fraction of the period. [Default: 0]
+        :param **kwargs: Parameters passed to BiologicProgram.
+        """
+        # set sweep to false if spacing is logarithmic
+        if 'sweep' in params:
+            if params.sweep is 'log':
+                params.sweep = False
+
+            elif params.sweep is 'lin':
+                params.sweep = True
+
+            else:
+                raise ValueError( 'Invalid sweep parameter' )
+
+        defaults = {
+            'vs_initial':           False,
+            'vs_final':             False,
+            'time_interval':        1,
+            'potential_interval':   0.001,
+            'sweep':                False,
+            'repeat':               1,
+            'correction':           False,
+            'wait':                 0
+        }
+
+        channels = kwargs[ 'channels' ] if ( 'channels' in kwargs ) else None
+        params = set_defaults( params, defaults, channels )
+        super().__init__(
+            device,
+            params,
+            **kwargs
+        )
+
+        for ch, ch_params in self.params.items():
+            ch_params[ 'current_range' ] = self._get_current_range(
+                ch_params[ 'current' ]
+            )
+
+        self._techniques = [ 'geis' ]
+        self._parameter_types = tfs.GEIS
+        self._data_fields = (
+            dp.SP300_Fields.GEIS
+            if ecl.is_in_SP300_family( self.device.kind ) else
+            dp.VMP3_Fields.GEIS
+        )
+        
+        self.field_titles = [
+            'Process',
+            'Time [s]',
+            'Voltage [V]',
+            'Current [A]',
+            'abs( Voltage ) [V]',
+            'abs( Current ) [A]',
+            'Impendance phase',
+            'Voltage_ce [V]',
+            'abs( Voltage_ce ) [V]',
+            'abs( Current_ce ) [A]',
+            'Impendance_ce phase',
+            'Frequency [Hz]'
+        ]
+        
+        self._fields = namedtuple( 'GEIS_datum', [
+            'process',
+            'time',
+            'voltage',
+            'current',
+            'abs_voltage',
+            'abs_current',
+            'impendance_phase',
+            'voltage_ce',
+            'abs_voltage_ce',
+            'abs_current_ce',
+            'impendance_ce_phase',
+            'frequency'
+        ] )
+       
+        def _geis_fields( datum, segment ):
+            """
+            Define fields for _run function.
+            """
+            if segment.info.ProcessIndex == 0:
+                f = (
+                    segment.info.ProcessIndex,
+                    dp.calculate_time(
+                        datum.t_high,
+                        datum.t_low,
+                        segment.info,
+                        segment.values
+                    ),
+                    datum.voltage,
+                    datum.current,
+                    None,
+                    None,
+                    None,
+                    None,
+                    None,
+                    None,
+                    None,
+                    None
+                )
+
+            elif segment.info.ProcessIndex == 1:
+                f = (
+                    segment.info.ProcessIndex,
+                    datum.time,
+                    datum.voltage,
+                    datum.current,
+                    datum.abs_voltage,
+                    datum.abs_current,
+                    datum.impendance_phase,
+                    datum.voltage_ce,
+                    datum.abs_voltage_ce,
+                    datum.abs_current_ce,
+                    datum.impendance_ce_phase,
+                    datum.frequency
+                )
+
+            else:
+                raise RuntimeError( f'Invalid ProcessIndex ({segment.info.ProcessIndex})' )
+
+            return f
+
+        self._field_values = _geis_fields
+
+
+    def run( self, retrieve_data = True ):
+        """
+        :param retrieve_data: Automatically retrieve and disconenct from device.
+            [Default: True]
+        """
+        params = {}
+        for ch, ch_params in self.params.items():
+            params[ ch ] = {
+                'vs_initial':           ch_params[ 'vs_initial' ],
+                'vs_final':             ch_params[ 'vs_initial' ],
+                'Initial_Current_step': ch_params[ 'current' ],
+                'Final_Current_step':   ch_params[ 'current' ],
+                'Duration_step':        ch_params[ 'duration' ],
+                'Step_number':          0,
+                'Record_every_dT':      ch_params[ 'time_interval' ],
+                'Record_every_dE':      ch_params[ 'potential_interval' ],
+                'Final_frequency':      ch_params[ 'final_frequency' ],
+                'Initial_frequency':    ch_params[ 'initial_frequency' ],
+                'sweep':                ch_params[ 'sweep' ],
+                'Amplitude_Current':    ch_params[ 'amplitude_current' ],
+                'Frequency_number':     ch_params[ 'frequency_number' ],
+                'Average_N_times':      ch_params[ 'repeat' ],
+                'Correction':           ch_params[ 'correction' ],
+                'Wait_for_steady':      ch_params[ 'wait' ],
+                'I_Range':              ch_params[ 'current_range' ].value
+            }
+
+        # run technique
+        data = self._run( 'geis', params, retrieve_data = retrieve_data )
+
+
+    def _get_current_range( self, currents ):
+        """
+        Get current range based on maximum current.
+
+        :param currents: List of currents.
+        :returns: ec_lib.IRange corresponding to largest current.
+        """
+        i_max = max( currents )
+
+        if i_max < 100e-12:
+            i_range = ecl.IRange.p100
+
+        elif i_max < 1e-9:
+            i_range = ecl.IRange.n1
+
+        elif i_max < 10e-9:
+            i_range = ecl.IRange.n10
+
+        elif i_max < 100e-9:
+            i_range = ecl.IRange.n100
+
+        elif i_max < 1e-6:
+            i_range = ecl.IRange.u1
+
+        elif i_max < 10e-6:
+            i_range = ecl.IRange.u10
+
+        elif i_max < 100e-6:
+            i_range = ecl.IRange.u100
+
+        elif i_max < 1e-3:
+            i_range = ecl.IRange.m1
+
+        elif i_max < 10e-3:
+            i_range = ecl.IRange.m10
+
+        elif i_max < 100e-3:
+            i_range = ecl.IRange.m100
+
+        elif i_max <= 1:
+            i_range = ecl.IRange.a1
+
+        else:
+            raise ValueError( 'Current too large.' )
+
+        return i_range    
 
 class JV_Scan( BiologicProgram ):
     """
