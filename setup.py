@@ -36,7 +36,7 @@ setuptools.setup(
     install_requires = [],
     package_data = {
         'easy_biologic': [
-            'technique_verison.json',
+            'techniques_version.json',
             f'techniques-*/*'
         ]
     }

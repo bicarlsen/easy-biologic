@@ -4,7 +4,6 @@
 # # Technique Fields
 # Field types for each technique.
 
-
 from enum import Enum
 
 
