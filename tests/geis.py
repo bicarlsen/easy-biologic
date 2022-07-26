@@ -9,8 +9,8 @@ import easy_biologic.__init__
 import easy_biologic.base_programs as blp
 
 
-def run_ocv():
-    """Test the OCV technique"""
+def run():
+    """Test the different techniques"""
     # Set the connection port
     USB = 'USB0'
 
@@ -142,4 +142,4 @@ def run_ocv():
     #potentiostat.start_channel(0)
 
 if __name__ == '__main__':
-    run_ocv()
+    run()
