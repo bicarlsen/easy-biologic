@@ -14,7 +14,7 @@ from .lib import ec_find as ecf
 from .lib import ec_lib  as ecl
 
 
-# # Biologic Device
+# Biologic Device
 
 HardwareConfiguration = namedtuple( 'HardwareConfiguration', [
     'connection',  # electrode connection
@@ -171,9 +171,13 @@ class BiologicDevice:
         self.__idn = idn
         self.__info = info
 
-        # initialize channels
-        chs = list( range( self.info.NumberOfChannels ) )
-
+        # initialize only connected channels        
+        chs=[]
+        self.__plugged=ecl.get_channels(self.idn)
+        for i in range(len(self.plugged)):
+            if self.plugged[i]:
+                chs.append(i)
+        
         try:
             ecl.init_channels(
                 self.idn, chs, bin_file = bin_file, xlx_file = xlx_file
@@ -183,12 +187,6 @@ class BiologicDevice:
             if err.value == -9:
                 # ECLab firmware loaded
                 pass
-
-        # get channel info
-        self.__plugged = ecl.get_channels(
-            self.idn,
-            self.info.NumberOfChannels
-        )
 
         self.__techniques = [ list() for ch in self.plugged ]
 
@@ -632,9 +630,13 @@ class BiologicDeviceAsync:
         self.__idn = idn
         self.__info = info
 
-        # initialize channels
-        chs = list( range( self.info.NumberOfChannels ) )
-
+        # initialize only connected channels        
+        chs=[]
+        self.__plugged=ecl.get_channels_async(self.idn)
+        for i in range(len(self.plugged)):
+            if self.plugged[i]:
+                chs.append(i)
+        
         try:
             await ecl.init_channels_async(
                 self.idn, chs, bin_file = bin_file, xlx_file = xlx_file
@@ -644,12 +646,6 @@ class BiologicDeviceAsync:
             if err.value == -9:
                 # ECLab firmware loaded
                 pass
-
-        # get channel info
-        self.__plugged = await ecl.get_channels_async(
-            self.idn,
-            self.info.NumberOfChannels
-        )
 
         self.__techniques = [ list() for ch in self.plugged ]
 
