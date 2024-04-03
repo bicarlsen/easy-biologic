@@ -566,6 +566,9 @@ methods = [
 # To handle asyncio.coroutine removal in Python 3.11
 # Following suggestion from https://discuss.python.org/t/deprecation-of-asyncio-coroutine/4461/2
 def coroutine(fn: typing.Callable) -> typing.Callable:
+    if int(platform.python_version_tuple()[1]) <= 10:
+        return asyncio.coroutine(fn)
+    
     if inspect.iscoroutinefunction(fn):
         return fn
 
