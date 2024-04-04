@@ -205,6 +205,7 @@ import time
 from datetime import datetime as dt
 import asyncio
 from collections import namedtuple
+import logging
 
 from . import BiologicProgram
 from .program import CallBack
@@ -772,7 +773,7 @@ class CP( BiologicProgram ):
             # transform to dictionary if needed
             currents = { ch: currents for ch in self.channels }
 
-        if ( durations is not None ) and ( not isinstance( voltages, dict ) ):
+        if ( durations is not None ) and ( not isinstance( durations, dict ) ):
             # transform to dictionary if needed
             durations = { ch: durations for ch in self.channels }
 
@@ -813,7 +814,7 @@ class CP( BiologicProgram ):
         :param currents: List of currents.
         :returns: ec_lib.IRange corresponding to largest current.
         """
-        i_max = max( abs( currents ) )
+        i_max = max( [ abs(c) for c in currents ] )
 
         if i_max < 100e-12:
             i_range = ecl.IRange.p100
