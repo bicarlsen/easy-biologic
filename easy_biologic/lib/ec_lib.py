@@ -111,6 +111,9 @@ import os
 import asyncio
 import ctypes as c
 import platform
+import typing
+import inspect
+import functools
 # import pkg_resources
 from enum import Enum
 
@@ -560,9 +563,25 @@ methods = [
     BL_GetData
 ]
 
+# To handle asyncio.coroutine removal in Python 3.11
+# Following suggestion from https://discuss.python.org/t/deprecation-of-asyncio-coroutine/4461/2
+def coroutine(fn: typing.Callable) -> typing.Callable:
+    if int(platform.python_version_tuple()[1]) <= 10:
+        return asyncio.coroutine(fn)
+    
+    if inspect.iscoroutinefunction(fn):
+        return fn
+
+    @functools.wraps(fn)
+    async def _wrapper(*args, **kwargs):
+        return fn(*args, **kwargs)
+
+    return _wrapper
+
+
 for method in methods:
     async_name = method.__name__ + '_async'
-    globals()[ async_name ] = asyncio.coroutine( method )
+    globals()[ async_name ] = coroutine( method )
 
 
 # ## Methods
