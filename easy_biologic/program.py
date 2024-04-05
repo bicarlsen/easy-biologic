@@ -286,12 +286,12 @@ class BiologicProgram( ABC ):
 
         states = {}
         for ch in channels:
-            info = self.device.channel_info( channel )
+            info = self.device.channel_info( ch )
             states[ ch ] = ecl.ChannelState( info.State )
 
         if single_ch:
             # single channel provided
-            return states[ channel ]
+            return states[ ch ]
 
         return states
 
@@ -588,6 +588,12 @@ class BiologicProgram( ABC ):
                 done = ( ecl.ChannelState( ch_segment.values.State  ) is ecl.ChannelState.STOP )
                 complete[ ch ] = done
                 if done:
+                    # Get all remaining data from channel
+                    count = len(segments[ch].data)
+                    while count > 0:
+                        segment = await self._retrieve_data_segment(ch)
+                        count = len(segment.data)
+                        
                     logging.debug( f'Channel {ch} complete.' )
 
 
