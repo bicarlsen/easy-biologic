@@ -77,6 +77,20 @@ from .lib import data_parser as dp
 try:
     import pandas as pd
     pandas_installed = True
+    
+    # Set kwargs for file writing
+    pd_csv_kwargs = {
+        'header': False,
+        'index': False,
+    }
+    
+    # Check version and set line terminator arg name accordingly
+    pd_version_tuple = [ int( v ) for v in pd.__version__.split( '.' ) ]
+    if ( pd_version_tuple[ 0 ] > 1 ) or ( pd_version_tuple[ 0 ] == 1 and pd_version_tuple[ 1 ] >= 5 ):
+        # Argument name changed in version 1.5
+        pd_csv_kwargs['lineterminator'] = '\n'
+    else:
+        pd_csv_kwargs['line_terminator'] = '\n'
 except ImportError:
     pandas_installed = False
 
@@ -662,7 +676,7 @@ class BiologicProgram( ABC ):
                     dataframe = pd.concat( list( ch_dataframes.values() ), axis=1 )
                     
                     # Convert to text (header already written)
-                    txt = dataframe.to_csv(header=False)
+                    txt = dataframe.to_csv( **pd_csv_kwargs )
                     
                     try:
                         f.write( txt )
@@ -746,7 +760,7 @@ class BiologicProgram( ABC ):
 
             if pandas_installed:
                 dataframe = pd.DataFrame( ch_data, columns=self.field_titles )
-                csv_data = dataframe.to_csv( header=False )
+                csv_data = dataframe.to_csv( **pd_csv_kwargs )
             else:
                 csv_data = ''
                 for datum in ch_data:
