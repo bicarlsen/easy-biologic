@@ -300,7 +300,41 @@ class ParameterType( Enum ):
     BOOLEAN  = 1
     SINGLE   = 2
     FLOAT    = 2
+    
+    
+class TestVariable( Enum ):
+    """
+    Variable for limit tests.
+    """
+    E    = 0
+    AUX1 = 1
+    AUX2 = 2
+    I    = 3
+    
 
+class TestComparison ( Enum ):
+    """
+    Comparison operator for limit tests.
+    """
+    LT = 0  # Less than
+    GT = 1  # Greater than
+    
+
+class TestLogic ( Enum ):
+    """
+    Logical operator for limit tests.
+    """
+    OR  = 0
+    AND = 1
+    
+    
+class ExitCondition ( Enum ):
+    """
+    Exit condition for limit tests.
+    """
+    NEXTSTEP      = 0
+    NEXTTECHNIQUE = 1
+    STOP          = 2
 
 # ## Structs
 
