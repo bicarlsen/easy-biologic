@@ -230,7 +230,33 @@ class ERange( Enum ):
     v5   = 1
     v10  = 2
     AUTO = 3
-
+    
+    
+class Bandwidth( Enum):
+    """
+    Bandwidths
+    """
+    BW1 = 1  # "Slow"
+    BW2 = 2
+    BW3 = 3
+    BW4 = 4
+    BW5 = 5  # "Medium"
+    BW6 = 6
+    BW7 = 7  # "Fast"
+    # NOTE: 8 and 9 only available for SP300 series
+    BW8 = 8
+    BW9 = 9
+    
+    
+class Filter( Enum ):
+    """
+    Filter frequencies
+    """
+    OFF = 0
+    k50 = 1  # 50 kHz
+    k1  = 2  # 1 kHz
+    a5  = 3  # 5 Hz
+    
 
 class ElectrodeConnection( Enum ):
     STANDARD = 0
