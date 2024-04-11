@@ -73,6 +73,13 @@ from collections import namedtuple
 from .lib import ec_lib as ecl
 from .lib import data_parser as dp
 
+# Try to import pandas for faster file writing
+try:
+    import pandas as pd
+    pandas_installed = True
+except ImportError:
+    pandas_installed = False
+
 
 DataSegment = namedtuple( 'DataSegment', [
     # parsed data, raw info, raw data
@@ -645,43 +652,66 @@ class BiologicProgram( ABC ):
                         logging.warning( f'Error writing header: {err}' )
 
                 # write data
-                # get maximum rows
-                num_rows = { ch: len( data ) for ch, data in self._unsaved_data.items() }
-                written = { ch: [] for ch in self._unsaved_data.keys() }
-                for index in range( max( num_rows.values() ) ):
-                    written_row = { ch: None for ch in self._unsaved_data.keys() }
-                    row_data = ''
+                if pandas_installed:
+                    # Get dataframe for each channel
+                    ch_dataframes = {}
                     for ch, ch_data in self._unsaved_data.items():
-                        if index < num_rows[ ch ]:
-                            # valid row for channel
-                            ch_datum = ch_data[ index ]
-                            row_data += ','.join( map( self._datum_to_str, ch_datum ) ) + ','
-                            written_row[ ch ] = ch_datum
-
-                        else:
-                            # channel data exhausted, write placeholders
-                            row_data += ','* num_titles
-
-                    # new row
-                    row_data = row_data[ :-1 ] + '\n'
-
+                        ch_dataframes[ ch ] = pd.DataFrame( ch_data, columns=self.field_titles )
+                        
+                    # Join all dataframes
+                    dataframe = pd.concat( list( ch_dataframes.values() ), axis=1 )
+                    
+                    # Convert to text (header already written)
+                    txt = dataframe.to_csv(header=False)
+                    
                     try:
-                        f.write( row_data )
+                        f.write( txt )
+                        
+                        # data written, remove data from unsaved
+                        for ch in ch_dataframes.keys():
+                            self._unsaved_data[ ch ] = []
 
                     except Exception as err:
                         logging.warning( f'Error writing data: {err}' )
+                    
+                else:
+                    # get maximum rows
+                    num_rows = { ch: len( data ) for ch, data in self._unsaved_data.items() }
+                    written = { ch: [] for ch in self._unsaved_data.keys() }
+                    for index in range( max( num_rows.values() ) ):
+                        written_row = { ch: None for ch in self._unsaved_data.keys() }
+                        row_data = ''
+                        for ch, ch_data in self._unsaved_data.items():
+                            if index < num_rows[ ch ]:
+                                # valid row for channel
+                                ch_datum = ch_data[ index ]
+                                row_data += ','.join( map( self._datum_to_str, ch_datum ) ) + ','
+                                written_row[ ch ] = ch_datum
 
-                    else:
-                        # successful write
-                        for ch, ch_datum in written_row.items():
-                            written[ ch ].append( ch_datum )
+                            else:
+                                # channel data exhausted, write placeholders
+                                row_data += ','* num_titles
 
-                # data written, remove data from unsaved
-                for ch, ch_data in written.items():
-                    self._unsaved_data[ ch ] = [
-                        datum for datum in ch_data
-                        if datum not in written[ ch ]
-                    ]
+                        # new row
+                        row_data = row_data[ :-1 ] + '\n'
+
+                        try:
+                            f.write( row_data )
+
+                        except Exception as err:
+                            logging.warning( f'Error writing data: {err}' )
+
+                        else:
+                            # successful write
+                            for ch, ch_datum in written_row.items():
+                                written[ ch ].append( ch_datum )
+
+                    # data written, remove data from unsaved
+                    for ch, ch_data in written.items():
+                        self._unsaved_data[ ch ] = [
+                            datum for datum in ch_data
+                            if datum not in written[ ch ]
+                        ]
 
         except Exception as err:
             if self._threaded:
@@ -714,10 +744,14 @@ class BiologicProgram( ABC ):
         for ch, ch_data in self._unsaved_data.items():
             file = os.path.join( folder, f'ch-{ch}.csv' )
 
-            csv_data = ''
-            for datum in ch_data:
-                csv_data += ','.join( map( self._datum_to_str, datum ) )
-                csv_data += '\n'
+            if pandas_installed:
+                dataframe = pd.DataFrame( ch_data, columns=self.field_titles )
+                csv_data = dataframe.to_csv( header=False )
+            else:
+                csv_data = ''
+                for datum in ch_data:
+                    csv_data += ','.join( map( self._datum_to_str, datum ) )
+                    csv_data += '\n'
 
             try:
                 with open( file, mode ) as f:
