@@ -302,7 +302,7 @@ class ParameterType( Enum ):
     FLOAT    = 2
     
     
-class TestVariable( Enum ):
+class LimitVariable( Enum ):
     """
     Variable for limit tests.
     """
@@ -312,7 +312,7 @@ class TestVariable( Enum ):
     I    = 3
     
 
-class TestComparison ( Enum ):
+class LimitComparison ( Enum ):
     """
     Comparison operator for limit tests.
     """
@@ -320,7 +320,7 @@ class TestComparison ( Enum ):
     GT = 1  # Greater than
     
 
-class TestLogic ( Enum ):
+class LimitLogic ( Enum ):
     """
     Logical operator for limit tests.
     """
