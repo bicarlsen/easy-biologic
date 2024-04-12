@@ -988,7 +988,7 @@ class CALimit( BiologicProgram ):
             for i in range(3):
                 try:
                     config = ch_params[ 'limits' ][ i ]
-                    params[ ch ][ f'Test{i + 1}_Config' ] = [ config.config ] * steps
+                    params[ ch ][ f'Test{i + 1}_Config' ] = [ config.config_int ] * steps
                     params[ ch ][ f'Test{i + 1}_Value' ] = [ config.value ] * steps
                 except IndexError:
                     # No limit supplied - inactive test
@@ -996,7 +996,6 @@ class CALimit( BiologicProgram ):
                     params[ ch ][ f'Test{i + 1}_Value' ] = 0
                 
             params[ ch ].update( map_hardware_params( ch_params, by_channel=False ) )
-        print(params)
 
         # run technique
         data = self._run( 'calimit', params, retrieve_data = retrieve_data )
@@ -2232,21 +2231,25 @@ def configure_limit(
     
     # Construct 32-bit integer from limit configuration parameters
     bit_list = [limit_active, limit_operator, limit_comparison, limit_var]
-    bit_list = [bin(bit) for bit in bit_list]
-    print(bit_list)
+    bit_list = [bin(bit)[2:] for bit in bit_list]
     
+    # From documentation:
+    # Bit 0: Limit Active
+    # Bit 1: Limit Logic
+    # Bits 2-4: Limit Comparison
+    # Bits 5-32: Limit Variable
     bit_positions = [0, 1, 2, 5]
     bit_string = ['0' for _ in range(32)]
     
     for pos, bits in zip(bit_positions, bit_list):
-        bits = bits[2:]
         for i, bit in enumerate(bits):
             bit_string[pos + i] = bit
 
     bit_string = ''.join(bit_string)
+    # Reverse order for correct evaluation
     bit_string = bit_string[::-1]
-    print(bit_string)
     
+    # Evaluate bit string
     config_int = int(bit_string, base=2)
     
     return LimitConfig( config_int, limit_value )
