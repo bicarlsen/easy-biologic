@@ -230,7 +230,33 @@ class ERange( Enum ):
     v5   = 1
     v10  = 2
     AUTO = 3
-
+    
+    
+class Bandwidth( Enum):
+    """
+    Bandwidths
+    """
+    BW1 = 1  # "Slow"
+    BW2 = 2
+    BW3 = 3
+    BW4 = 4
+    BW5 = 5  # "Medium"
+    BW6 = 6
+    BW7 = 7  # "Fast"
+    # NOTE: 8 and 9 only available for SP300 series
+    BW8 = 8
+    BW9 = 9
+    
+    
+class Filter( Enum ):
+    """
+    Filter frequencies
+    """
+    OFF = 0
+    k50 = 1  # 50 kHz
+    k1  = 2  # 1 kHz
+    h5  = 3  # 5 Hz
+    
 
 class ElectrodeConnection( Enum ):
     STANDARD = 0
@@ -274,7 +300,41 @@ class ParameterType( Enum ):
     BOOLEAN  = 1
     SINGLE   = 2
     FLOAT    = 2
+    
+    
+class LimitVariable( Enum ):
+    """
+    Variable for limit tests.
+    """
+    E    = 0
+    AUX1 = 1
+    AUX2 = 2
+    I    = 3
+    
 
+class LimitComparison ( Enum ):
+    """
+    Comparison operator for limit tests.
+    """
+    LT = 0  # Less than
+    GT = 1  # Greater than
+    
+
+class LimitLogic ( Enum ):
+    """
+    Logical operator for limit tests.
+    """
+    OR  = 0
+    AND = 1
+    
+    
+class ExitCondition ( Enum ):
+    """
+    Exit condition for limit tests.
+    """
+    NEXTSTEP      = 0
+    NEXTTECHNIQUE = 1
+    STOP          = 2
 
 # ## Structs
 

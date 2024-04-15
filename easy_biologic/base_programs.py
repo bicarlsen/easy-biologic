@@ -3,7 +3,17 @@
 
 # # Base Programs
 # Creates basic programs implementing BiologicProgram.
-
+#
+# ## Common hardware parameters
+# The following hardware parameters can be supplied for all techniques:
+# **current_range:** Current range. Use ec_lib.IRange.
+#
+# **voltage_range:** Voltage range. Use ec_lib.ERange.
+#
+# **timebase:** Timebase in seconds.
+#
+# **bandwidth:** Bandwidth. Use ec_lib.Bandwidth.
+#
 # ## OCV
 # ### Params
 # **time:** Run time in seconds.
@@ -206,6 +216,8 @@ from datetime import datetime as dt
 import asyncio
 from collections import namedtuple
 import logging
+import warnings
+from enum import Enum
 
 from . import BiologicProgram
 from .program import CallBack
@@ -377,7 +389,8 @@ def set_defaults( params, defaults, channels ):
     return params
 
 
-def map_params( key_map, params, by_channel = True, keep = False, inplace = False ):
+def map_params( key_map, params, by_channel = True, keep = False, inplace = False, 
+               discard_unmapped = False, convert_enums = False ):
     """
     Returns a dictionary with names mapped.
 
@@ -388,6 +401,11 @@ def map_params( key_map, params, by_channel = True, keep = False, inplace = Fals
     :param keep: True to keep original name, False to remove it.
         [Default: False]
     :param inplace: Transform original params dictionary, or create a new one.
+        [Default: False]
+    :param discard_unmapped: True to discard items in params if not in key_map,
+        False to keep unapped items.
+        [Default: False]
+    :param convert_enums: True to convert Enum instances to values, False to leave as Enums.
         [Default: False]
     :returns: Dictionary with mapped keys.
     """
@@ -400,12 +418,19 @@ def map_params( key_map, params, by_channel = True, keep = False, inplace = Fals
         """
         for o_key, n_key in key_map.items():
             ch_params[ n_key ] = ch_params[ o_key ]
+            if isinstance( ch_params[ n_key ], Enum ) and convert_enums:
+                ch_params[ n_key ] = ch_params[ n_key ].value
 
         if not keep:
             # remove original keys
             for o_key in key_map:
                 del ch_params[ o_key ]
-
+                
+        if discard_unmapped:
+            # Remove any unmapped keys
+            for key in list( ch_params.keys() ):
+                if key not in key_map.values():
+                    del ch_params[ key ]
 
     if not inplace:
         params = params.copy()
@@ -419,6 +444,47 @@ def map_params( key_map, params, by_channel = True, keep = False, inplace = Fals
 
     return params
 
+
+def map_hardware_params( params, by_channel = True, keep = False, inplace = False ):
+    """
+    Returns a dictionary with ONLY common hardware parameter names mapped.
+
+    :param params: Dictionary of parameters.
+    :param by_channel: Whether params is by channel, or only parameters.
+        [Default: True]
+    :param keep: True to keep original name, False to remove it.
+        [Default: False]
+    :param inplace: Transform original params dictionary, or create a new one.
+        [Default: False]
+    :returns: Dictionary with mapped keys.
+    """
+    hardware_param_map = {
+        'voltage_range': 'E_Range',
+        'current_range': 'I_Range',
+        'bandwidth':  'Bandwidth',
+        'timebase': 'tb'
+    }
+    
+    # Only map parameters that exist in params
+    hardware_param_map = {
+        k: v for k, v in hardware_param_map.items()
+        if k in params.keys()
+    }
+    
+    if len(hardware_param_map) == 0:
+        return {}
+    
+    # Return only the mapped params
+    return map_params( 
+        hardware_param_map, 
+        params,
+        by_channel=by_channel,
+        keep=keep,
+        inplace=inplace,
+        discard_unmapped=True,
+        convert_enums=True
+    )
+    
 
 # --- Base Classes ---
 
@@ -492,6 +558,7 @@ class OCV( BiologicProgram ):
             'time_interval':    'Record_every_dT'
         }
         params = map_params( key_map, self.params )
+        params.update( map_hardware_params(self.params) )
 
         # run technique
         self._run( 'ocv', params, retrieve_data = retrieve_data )
@@ -526,7 +593,7 @@ class CA( BiologicProgram ):
             'vs_initial':       False,
             'time_interval':    1.0,
             'current_interval': 1e-3,
-            'current_range':    ecl.IRange.m10
+            'current_range':    ecl.IRange.m10,
         }
 
         channels = kwargs[ 'channels' ] if ( 'channels' in kwargs ) else None
@@ -536,6 +603,12 @@ class CA( BiologicProgram ):
             params,
             **kwargs
         )
+        
+        # Set voltage range based on voltage steps
+        for ch, ch_params in self.params.items():
+            ch_params[ 'voltage_range' ] = get_voltage_range(
+                max( [ abs( c ) for c in ch_params[ 'voltages' ] ] )
+            )
 
         self._techniques = [ 'ca' ]
         self._parameter_types = tfs.CA
@@ -574,7 +647,7 @@ class CA( BiologicProgram ):
 
     def run( self, retrieve_data = True ):
         """
-        :param retrieve_data: Automatically retrieve and disconenct form device.
+        :param retrieve_data: Automatically retrieve and disconnect from device.
             [Default: True]
         """
         params = {}
@@ -588,8 +661,8 @@ class CA( BiologicProgram ):
                 'Record_every_dT':   ch_params[ 'time_interval' ],
                 'Record_every_dI':   ch_params[ 'current_interval' ],
                 'N_Cycles':          0,
-                'I_Range':           ch_params[ 'current_range' ].value
             }
+            params[ ch ].update( map_hardware_params( ch_params, by_channel=False ) )
 
         # run technique
         data = self._run( 'ca', params, retrieve_data = retrieve_data )
@@ -616,7 +689,7 @@ class CA( BiologicProgram ):
             # transform to dictionary if needed
             voltages = { ch: voltages for ch in self.channels }
 
-        if ( durations is not None ) and ( not isinstance( voltages, dict ) ):
+        if ( durations is not None ) and ( not isinstance( durations, dict ) ):
             # transform to dictionary if needed
             durations = { ch: durations for ch in self.channels }
 
@@ -649,10 +722,10 @@ class CA( BiologicProgram ):
                 types = self._parameter_types
             )
 
-
+# TODO: update docstrings
 class CP( BiologicProgram ):
     """
-    Runs a chorono-potentiometry technqiue.
+    Runs a chrono-potentiometry technqiue.
     """
 
     def __init__(
@@ -678,7 +751,7 @@ class CP( BiologicProgram ):
         defaults = {
             'vs_initial':       False,
             'time_interval':    1.0,
-            'voltage_interval': 1e-3
+            'voltage_interval': 1e-3,
         }
 
         channels = kwargs[ 'channels' ] if ( 'channels' in kwargs ) else None
@@ -689,10 +762,10 @@ class CP( BiologicProgram ):
             **kwargs
         )
 
+        # Set current range based on current steps
         for ch, ch_params in self.params.items():
-            ch_params[ 'current_range' ] = self._get_current_range(
-                ch_params[ 'currents' ]
-            )
+            i_max = max( [ abs( c ) for c in ch_params[ 'currents' ] ] )
+            set_current_range( ch_params, i_max )
 
         self._techniques = [ 'cp' ]
         self._parameter_types = tfs.CP
@@ -745,8 +818,8 @@ class CP( BiologicProgram ):
                 'Record_every_dT':   ch_params[ 'time_interval' ],
                 'Record_every_dE':   ch_params[ 'voltage_interval' ],
                 'N_Cycles':          0,
-                'I_Range':           ch_params[ 'current_range' ].value
             }
+            params[ ch ].update( map_hardware_params( ch_params, by_channel=False ) )
 
         # run technique
         data = self._run( 'cp', params, retrieve_data = retrieve_data )
@@ -807,59 +880,10 @@ class CP( BiologicProgram ):
             )
 
 
-    def _get_current_range( self, currents ):
-        """
-        Get current range based on maximum current.
-
-        :param currents: List of currents.
-        :returns: ec_lib.IRange corresponding to largest current.
-        """
-        i_max = max( [ abs(c) for c in currents ] )
-
-        if i_max < 100e-12:
-            i_range = ecl.IRange.p100
-
-        elif i_max < 1e-9:
-            i_range = ecl.IRange.n1
-
-        elif i_max < 10e-9:
-            i_range = ecl.IRange.n10
-
-        elif i_max < 100e-9:
-            i_range = ecl.IRange.n100
-
-        elif i_max < 1e-6:
-            i_range = ecl.IRange.u1
-
-        elif i_max < 10e-6:
-            i_range = ecl.IRange.u10
-
-        elif i_max < 100e-6:
-            i_range = ecl.IRange.u100
-
-        elif i_max < 1e-3:
-            i_range = ecl.IRange.m1
-
-        elif i_max < 10e-3:
-            i_range = ecl.IRange.m10
-
-        elif i_max < 100e-3:
-            i_range = ecl.IRange.m100
-
-        elif i_max <= 1:
-            i_range = ecl.IRange.a1
-
-        else:
-            raise ValueError( 'Current too large.' )
-
-        return i_range
-
-
 class CALimit( BiologicProgram ):
     """
     Runs a cyclic amperometry technqiue.
     """
-    # TODO: Add limit conditions as parameters, not hard coded
     def __init__(
         self,
         device,
@@ -880,16 +904,27 @@ class CALimit( BiologicProgram ):
                 [Default: 0.001]
             current_range: Current range. Use ec_lib.IRange.
                 [Default: IRange.m10 ]
+            limits: List of LimitConfig tuples defining limits for the 
+                technique. LimitConfig objects should be constructed 
+                with configure_limit. Up to 3 limits can be supplied.
+                If no limits are supplied, you should use the standard 
+                CA technique instead of CALimit.
+                [Default: []]
+            exit_condition: How to exit the technique when a limit is
+                violated. Use ec_lib.ExitCondition.
+                [Default: ExitCondition.STOP]
         :param **kwargs: Parameters passed to BiologicProgram.
         """
         defaults = {
             'vs_initial':       False,
             'time_interval':    1.0,
             'current_interval': 1e-3,
-            'current_range':    ecl.IRange.m10
+            'current_range':    ecl.IRange.m10,
+            'limits': [],
+            'exit_condition':   ecl.ExitCondition.STOP
         }
 
-        channels = kwargs[ 'channels' ] if ( 'channels' in kwargs ) else None
+        channels = kwargs[ 'channels' ] if ( 'channels' in kwargs ) else None        
         params = set_defaults( params, defaults, channels )
 
         super().__init__(
@@ -948,17 +983,22 @@ class CALimit( BiologicProgram ):
                 'Step_number':       steps - 1,
                 'Record_every_dT':   ch_params[ 'time_interval' ],
                 'Record_every_dI':   ch_params[ 'current_interval' ],
-                'Test1_Config':      0, # TODO
-                'Test1_Value':       0,
-                'Test2_Config':      0,
-                'Test2_Value':       0,
-                'Test3_Config':      0,
-                'Test3_Value':       0,
-                'Exit_Cond':         0,
-                'N_Cycles':          0,
-                'I_Range':           ch_params[ 'current_range' ].value
+                'Exit_Cond':         [ ch_params[ 'exit_condition' ].value ] * steps,
+                'N_Cycles':          0
             }
-
+            
+            # Set limit (test) configuration
+            for i in range(3):
+                try:
+                    config = ch_params[ 'limits' ][ i ]
+                    params[ ch ][ f'Test{i + 1}_Config' ] = [ config.config_int ] * steps
+                    params[ ch ][ f'Test{i + 1}_Value' ] = [ config.value ] * steps
+                except IndexError:
+                    # No limit supplied - inactive test
+                    params[ ch ][ f'Test{i + 1}_Config' ] = 0
+                    params[ ch ][ f'Test{i + 1}_Value' ] = 0
+                
+            params[ ch ].update( map_hardware_params( ch_params, by_channel=False ) )
 
         # run technique
         data = self._run( 'calimit', params, retrieve_data = retrieve_data )
@@ -1099,11 +1139,13 @@ class PEIS( BiologicProgram ):
             'Current [A]',
             'abs( Voltage ) [V]',
             'abs( Current ) [A]',
-            'Impendance phase',
+            'Impedance phase',
+            'Impedance modulus',
             'Voltage_ce [V]',
             'abs( Voltage_ce ) [V]',
             'abs( Current_ce ) [A]',
-            'Impendance_ce phase',
+            'Impedance_ce phase',
+            'Impedance_ce modulus',
             'Frequency [Hz]'
         ]
         
@@ -1114,11 +1156,13 @@ class PEIS( BiologicProgram ):
             'current',
             'abs_voltage',
             'abs_current',
-            'impendance_phase',
+            'impedance_phase',
+            'impedance_modulus',
             'voltage_ce',
             'abs_voltage_ce',
             'abs_current_ce',
-            'impendance_ce_phase',
+            'impedance_ce_phase',
+            'impedance_ce_modulus',
             'frequency'
         ] )
        
@@ -1144,6 +1188,8 @@ class PEIS( BiologicProgram ):
                     None,
                     None,
                     None,
+                    None,
+                    None,
                     None
                 )
 
@@ -1155,11 +1201,13 @@ class PEIS( BiologicProgram ):
                     datum.current,
                     datum.abs_voltage,
                     datum.abs_current,
-                    datum.impendance_phase,
+                    datum.impedance_phase,
+                    datum.abs_voltage / datum.abs_current, 
                     datum.voltage_ce,
                     datum.abs_voltage_ce,
                     datum.abs_current_ce,
-                    datum.impendance_ce_phase,
+                    datum.impedance_ce_phase,
+                    datum.abs_voltage_ce / datum.abs_current_ce, 
                     datum.frequency
                 )
 
@@ -1173,7 +1221,7 @@ class PEIS( BiologicProgram ):
 
     def run( self, retrieve_data = True ):
         """
-        :param retrieve_data: Automatically retrieve and disconenct from device.
+        :param retrieve_data: Automatically retrieve and disconnect from device.
             [Default: True]
         """
         params = {}
@@ -1196,6 +1244,7 @@ class PEIS( BiologicProgram ):
                 'Correction':           ch_params[ 'correction' ],
                 'Wait_for_steady':      ch_params[ 'wait' ]
             }
+            params[ ch ].update( map_hardware_params( ch_params, by_channel=False ) )
 
         # run technique
         data = self._run( 'peis', params, retrieve_data = retrieve_data )
@@ -1267,9 +1316,10 @@ class GEIS( BiologicProgram ):
         )
 
         for ch, ch_params in self.params.items():
-            ch_params[ 'current_range' ] = self._get_current_range(
-                ch_params[ 'current' ]
-            )
+            # Per documentation, amplitude current should not exceed
+            # 50% of the IRange
+            set_current_range( ch_params, 2 * ch_params[ 'amplitude_current' ] )
+            
 
         self._techniques = [ 'geis' ]
         self._parameter_types = tfs.GEIS
@@ -1286,11 +1336,13 @@ class GEIS( BiologicProgram ):
             'Current [A]',
             'abs( Voltage ) [V]',
             'abs( Current ) [A]',
-            'Impendance phase',
+            'Impedance phase',
+            'Impedance modulus',
             'Voltage_ce [V]',
             'abs( Voltage_ce ) [V]',
             'abs( Current_ce ) [A]',
-            'Impendance_ce phase',
+            'Impedance_ce phase',
+            'Impedance_ce modulus',
             'Frequency [Hz]'
         ]
         
@@ -1301,11 +1353,13 @@ class GEIS( BiologicProgram ):
             'current',
             'abs_voltage',
             'abs_current',
-            'impendance_phase',
+            'impedance_phase',
+            'impedance_modulus',
             'voltage_ce',
             'abs_voltage_ce',
             'abs_current_ce',
-            'impendance_ce_phase',
+            'impedance_ce_phase',
+            'impedance_ce_modulus',
             'frequency'
         ] )
        
@@ -1331,6 +1385,8 @@ class GEIS( BiologicProgram ):
                     None,
                     None,
                     None,
+                    None,
+                    None,
                     None
                 )
 
@@ -1342,11 +1398,13 @@ class GEIS( BiologicProgram ):
                     datum.current,
                     datum.abs_voltage,
                     datum.abs_current,
-                    datum.impendance_phase,
+                    datum.impedance_phase,
+                    datum.abs_voltage / datum.abs_current, 
                     datum.voltage_ce,
                     datum.abs_voltage_ce,
                     datum.abs_current_ce,
-                    datum.impendance_ce_phase,
+                    datum.impedance_ce_phase,
+                    datum.abs_voltage_ce / datum.abs_current_ce, 
                     datum.frequency
                 )
 
@@ -1382,59 +1440,13 @@ class GEIS( BiologicProgram ):
                 'Average_N_times':      ch_params[ 'repeat' ],
                 'Correction':           ch_params[ 'correction' ],
                 'Wait_for_steady':      ch_params[ 'wait' ],
-                'I_Range':              ch_params[ 'current_range' ].value
+                # 'I_Range':              ch_params[ 'current_range' ].value
             }
+            params[ ch ].update( map_hardware_params( ch_params, by_channel=False ) )
 
         # run technique
         data = self._run( 'geis', params, retrieve_data = retrieve_data )
 
-
-    def _get_current_range( self, currents ):
-        """
-        Get current range based on maximum current.
-
-        :param currents: List of currents.
-        :returns: ec_lib.IRange corresponding to largest current.
-        """
-        i_max = max( currents )
-
-        if i_max < 100e-12:
-            i_range = ecl.IRange.p100
-
-        elif i_max < 1e-9:
-            i_range = ecl.IRange.n1
-
-        elif i_max < 10e-9:
-            i_range = ecl.IRange.n10
-
-        elif i_max < 100e-9:
-            i_range = ecl.IRange.n100
-
-        elif i_max < 1e-6:
-            i_range = ecl.IRange.u1
-
-        elif i_max < 10e-6:
-            i_range = ecl.IRange.u10
-
-        elif i_max < 100e-6:
-            i_range = ecl.IRange.u100
-
-        elif i_max < 1e-3:
-            i_range = ecl.IRange.m1
-
-        elif i_max < 10e-3:
-            i_range = ecl.IRange.m10
-
-        elif i_max < 100e-3:
-            i_range = ecl.IRange.m100
-
-        elif i_max <= 1:
-            i_range = ecl.IRange.a1
-
-        else:
-            raise ValueError( 'Current too large.' )
-
-        return i_range    
 
 class JV_Scan( BiologicProgram ):
     """
@@ -1516,6 +1528,7 @@ class JV_Scan( BiologicProgram ):
                 'Begin_measuring_I': 0, # start measurement at beginning of interval
                 'End_measuring_I':   1  # finish measurement at end of interval
             }
+            params[ ch ].update( map_hardware_params( ch_params, by_channel=False ) )
 
         # run technique
         data = self._run( 'cv', params, retrieve_data = retrieve_data )
@@ -1571,6 +1584,8 @@ class MPP_Tracking( CALimit ):
                 ch_params[ 'voltages' ]  = [ init_vmpp ]
                 ch_params[ 'durations' ] = ch_params[ 'run_time' ]
                 ch_params[ 'time_interval' ] = ch_params[ 'record_interval' ]
+                ch_params.update( map_hardware_params( ch_params, by_channel=False ) )
+                
 
         else:
             init_vmpp  = params[ 'init_vmpp' ]
@@ -1580,6 +1595,7 @@ class MPP_Tracking( CALimit ):
             params[ 'voltages' ]  = [ init_vmpp ]
             params[ 'durations' ] = params[ 'run_time' ]
             params[ 'time_interval' ] = params[ 'record_interval' ]
+            params.update( map_hardware_params( params ) )
 
 
         super().__init__(
@@ -2085,3 +2101,158 @@ class MPP_Cycles( MPP ):
         ), flush = True )
 
         super().run( folder, by_channel = by_channel )
+        
+        
+def get_current_range( i_max ):
+        """
+        Get current range based on maximum current.
+
+        :param i_max: Maximum expected current
+        :returns: ec_lib.IRange corresponding to maximum current.
+        """
+        i_max = abs( i_max )
+        
+        if i_max < 100e-12:
+            i_range = ecl.IRange.p100
+
+        elif i_max < 1e-9:
+            i_range = ecl.IRange.n1
+
+        elif i_max < 10e-9:
+            i_range = ecl.IRange.n10
+
+        elif i_max < 100e-9:
+            i_range = ecl.IRange.n100
+
+        elif i_max < 1e-6:
+            i_range = ecl.IRange.u1
+
+        elif i_max < 10e-6:
+            i_range = ecl.IRange.u10
+
+        elif i_max < 100e-6:
+            i_range = ecl.IRange.u100
+
+        elif i_max < 1e-3:
+            i_range = ecl.IRange.m1
+
+        elif i_max < 10e-3:
+            i_range = ecl.IRange.m10
+
+        elif i_max < 100e-3:
+            i_range = ecl.IRange.m100
+
+        elif i_max <= 1:
+            i_range = ecl.IRange.a1
+
+        else:
+            raise ValueError( 'Current too large.' )
+
+        return i_range
+    
+    
+def set_current_range(ch_params, i_max):
+    user_i_range = ch_params.get( 'current_range', None )
+    if user_i_range is None:
+        # No user-specified value. Set based on expected i_max
+        ch_params[ 'current_range' ] = get_current_range( i_max )
+    else:
+        # Check user-specified current range
+        if not isinstance(user_i_range, ecl.IRange):
+            user_i_range = ecl.IRange(user_i_range)
+        
+        # Warn, but don't overwrite
+        if user_i_range.value <= i_max:
+            warnings.warn(
+                'Expected maximum current of {:.1e} A exceeds '
+                'provided current range {}'.format(i_max, user_i_range)
+            )
+        
+    
+    
+
+def get_voltage_range( v_max ):
+        """
+        Get voltage range based on maximum voltage.
+
+        :param v_max: Maximum expected voltage
+        :returns: ec_lib.ERange corresponding to maximum voltage.
+        """
+        v_max = abs( v_max )
+        
+        if v_max < 2.5:
+            v_range = ecl.ERange.v2_5
+
+        elif v_max < 5:
+            v_range = ecl.ERange.v5
+
+        elif v_max < 10:
+            v_range = ecl.ERange.v10
+
+        else:
+            raise ValueError( 'Voltage too large.' )
+
+        return v_range
+    
+    
+LimitConfig = namedtuple( 'LimitConfig', [ 'config_int', 'value' ] )
+    
+def configure_limit(
+        variable: ecl.LimitVariable, 
+        comparison: ecl.LimitComparison, 
+        logic: ecl.LimitLogic,
+        limit_value: float
+    ):
+    """
+    Create a limit configuration for CA Limit or CP Limit techniques.
+    Exit behavior is controlled separately by the exit_condition parameter.
+    Example: create a limit that will stop the technique if the current exceeds 1 mA:
+        limit = configure_limit(
+            ecl.LimitVariable.I,  # Apply limit to current
+            ecl.LimitComparison.GT,  # Stop if greater than
+            ecl.LimitLogic.OR,  # Stop if this limit OR another limit is violated
+            1e-3  # limit value 0.001 A (1 mA)
+        )
+        params = {..., 'limits': [ limit ]}
+        ca = CALimit(device, params)
+    
+    :param ecl.LimitVariable variable: Variable to limit. 
+        Options: I, E, AUX1, AUX2 (see ec_lib.LimitVariable).
+    :param ecl.LimitComparison comparison: Comparison operator (see ec_lib.LimitComparison).
+        If GT, stop the technique if the variable is greater than limit_value.
+        If LT, stop the technique if the variable is less than limit_value.
+    :param ecl.LimitLogic logic: Logical operator for assessing multiple limits.
+        Options: AND, OR (see ec_lib.LimitLogic)
+    :param float limit_value: Limit value applied to specified variable.
+        Has units of volts for voltage limit or amps for current limit.
+    :returns: LimitConfig tuple
+    """
+    limit_var = variable.value
+    limit_active = 1
+    limit_comparison = comparison.value
+    limit_operator = logic.value
+    
+    # Construct 32-bit integer from limit configuration parameters
+    bit_list = [limit_active, limit_operator, limit_comparison, limit_var]
+    bit_list = [bin(bit)[2:] for bit in bit_list]
+    
+    # From documentation:
+    # Bit 0: Limit Active
+    # Bit 1: Limit Logic
+    # Bits 2-4: Limit Comparison
+    # Bits 5-32: Limit Variable
+    bit_positions = [0, 1, 2, 5]
+    bit_string = ['0' for _ in range(32)]
+    
+    for pos, bits in zip(bit_positions, bit_list):
+        for i, bit in enumerate(bits):
+            bit_string[pos + i] = bit
+
+    bit_string = ''.join(bit_string)
+    # Reverse order for correct evaluation
+    bit_string = bit_string[::-1]
+    
+    # Evaluate bit string
+    config_int = int(bit_string, base=2)
+    
+    return LimitConfig( config_int, limit_value )

@@ -34,6 +34,9 @@ setuptools.setup(
         "Development Status :: 3 - Alpha"
     ],
     install_requires = [],
+    extras_require = {
+        "pandas": [ "pandas" ]
+    },
     package_data = {
         'easy_biologic': [
             'techniques_version.json',

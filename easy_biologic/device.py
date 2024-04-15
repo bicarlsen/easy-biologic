@@ -330,7 +330,7 @@ class BiologicDevice:
             else:
                 raise TypeError( 'Invalid types provided.')
 
-            self.load_technique( ch, tech, params, index, last, kinds )
+            self.load_technique( ch, technique, params, index, last, kinds )
 
 
     def update_parameters(
@@ -789,7 +789,7 @@ class BiologicDeviceAsync:
             else:
                 raise TypeError( 'Invalid types provided.')
 
-            await self.load_technique( ch, tech, params, index, last, kinds )
+            await self.load_technique( ch, technique, params, index, last, kinds )
 
 
     async def update_parameters(
