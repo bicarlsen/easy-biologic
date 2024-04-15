@@ -402,6 +402,9 @@ def map_params( key_map, params, by_channel = True, keep = False, inplace = Fals
         [Default: False]
     :param inplace: Transform original params dictionary, or create a new one.
         [Default: False]
+    :param discard_unmapped: True to discard items in params if not in key_map,
+        False to keep unapped items.
+        [Default: False]
     :param convert_enums: True to convert Enum instances to values, False to leave as Enums.
         [Default: False]
     :returns: Dictionary with mapped keys.
