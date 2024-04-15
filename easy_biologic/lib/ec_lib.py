@@ -255,7 +255,7 @@ class Filter( Enum ):
     OFF = 0
     k50 = 1  # 50 kHz
     k1  = 2  # 1 kHz
-    a5  = 3  # 5 Hz
+    h5  = 3  # 5 Hz
     
 
 class ElectrodeConnection( Enum ):
