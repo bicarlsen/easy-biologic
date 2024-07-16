@@ -230,16 +230,23 @@ Performs a Galvanostatic Electrochemical Impedance Spectroscopy
 + **wait:** Adds a delay before the measurement at each frequency. The delay is expressed as a fraction of the period. 
 [Default: 0]
     
-#### JV_Scan
-Performs a JV scan.
+#### CV
+Performs a CV scan.
 
 ##### Params
 + **start:** Start voltage. 
 [Default: 0]
 
-+ **end:** End voltage.
++ **end:** End voltage. Boundary voltage in forward scan. 
+[Default: 0.5]
 
-+ **step:** Voltage step. 
++ **E2** Boundary voltage in backward scan. 
+[Default: 0]
+
++ **Ef** End voltage in the final cycle scan 
+[Default: 0]
+
++ **step:** Voltage step. dEN/1000
 [Default: 0.01]
 
 + **rate:** Scan rate in V/s. 
@@ -271,7 +278,7 @@ Performs MPP tracking.
 
 
 #### MPP
-Runs MPP tracking, finding the initial Vmpp by first measuring Voc, then performing a JV scan from 0 to Voc.
+Runs MPP tracking, finding the initial Vmpp by first measuring Voc, then performing a CV scan from 0 to Voc.
 
 ##### Params
 + **run_time:** Run time in seconds.
@@ -290,12 +297,12 @@ Runs MPP tracking, finding the initial Vmpp by first measuring Voc, then perform
 
 
 #### MPP Cycles
-Runs multiple MPP cycles, performing Voc and JV scans at the beginning of each.
+Runs multiple MPP cycles, performing Voc and CV scans at the beginning of each.
 
 ##### Params
 + **run_time:** Run time in seconds
 
-+ **scan_interval:** How often to perform a JV scan.
++ **scan_interval:** How often to perform a CV scan.
 
 + **probe_step:** Voltage step for probe. [Default: 0.01 V]
 
@@ -481,4 +488,94 @@ mpp = blp.MPP(
 
 # run program
 mpp.run( 'data' )
+```
+
+Following is an example running a CV scan for three cycles at a scan rate of 50 mV/s in channel 0. The experiment begins at 0.5 V and forward scans to -0.25 V, then scans backward to 0.8 V. In the final cycles, it scans to 1.0 V and finish the experiment.
+```python
+import easy_biologic as ebl
+import easy_biologic.base_programs as blp        
+
+bl = ebl.BiologicDevice( '192.168.1.2' )
+
+save_path = '/save_path/CV.csv'
+    
+params = {
+    'start': 0.5,
+    'end': -0.25,
+    'E2': 0.8,
+    'Ef': 1.0,
+    'rate': 0.05,  
+    'step': 0.001,    
+    'N_Cycles': 2,
+    'begin_measuring_I': 0.5,
+    'End_measuring_I': 1.0,
+}  
+
+CV = blp.CV(
+    bl,
+    params,     
+    channels = [0]   #channel is to be claimed.
+)     
+
+#run program and save data into csv file.
+CV.run( 'data' )
+CV.save_data(save_path)
+```
+
+Following is an example that run the OCV and use the OCV as the voltage in PEIS test.
+```python
+import easy_biologic as ebl
+import easy_biologic.base_programs as blp        
+
+bl = ebl.BiologicDevice( '192.168.1.2' )
+
+save_path_ocv = '/save_path/OCV.csv'
+
+# Run OCP test
+params_ocv = {
+    'time': 2,
+    'time_interval': 1,
+}
+
+ocv = blp.OCV(
+    bl,
+    params_ocv,
+    channels=[0]
+    )
+
+ocv.run('data')
+ocv.save_data(save_path_ocv)
+
+voc = {
+    ch: [datum.voltage for datum in data]
+    for ch, data in ocv.data.items()
+}
+
+voc = {
+    ch: sum(ch_voc) / len(ch_voc)
+    for ch, ch_voc in voc.items()
+}
+
+# Run PEIS test
+save_path_peis = '/save_path/PEIS.csv'
+
+params_peis = {
+    'voltage': list(voc.values())[0],
+    'final_frequency': 1000,  # frequency unit: Hertz
+    'initial_frequency': 1000000,  # frequency unit: Hertz
+    'amplitude_voltage': 0.1,  # voltage unit: Volt
+    'frequency_number': 60,
+    'duration': 0,  # time unit: second
+    'repeat': 10,
+    'wait': 0.1
+}
+
+peis = blp.PEIS(
+    bl,
+    params_peis,
+    channels=[0]
+)
+
+peis.run('data')
+peis.save_data(save_path_peis)
 ```
