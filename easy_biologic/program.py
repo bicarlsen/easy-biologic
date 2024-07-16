@@ -147,7 +147,7 @@ class BiologicProgram( ABC ):
         :raises ValueError: If data_window is a dictionary and missing channel keys.
 
         Properties
-        :write_attempts: Number of attempts to try to write data, afterwhich an exception is raised.
+        :write_attempts: Number of attempts to try to write data, after which an exception is raised.
             If None, never raise an exception.
             [Default: 0]
         :field_titles: List of names for each field to be used when writing data.

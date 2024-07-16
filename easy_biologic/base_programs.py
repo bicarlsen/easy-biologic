@@ -131,8 +131,8 @@
 #
 # + **irange:** Specifies the current range of the measurement. 0 = 100 pA, 10 = 1 A, the numbers in between is for each order of magnitude 
 #
-# ## JV_Scan
-# Performs a JV scan.
+# ## CV
+# Performs a CV scan.
 #
 # ### Params
 # **end:** End voltage.
@@ -175,7 +175,7 @@
 #
 #
 # ## MPP
-# Runs MPP tracking and finds the initial Vmpp by finding the Voc, then performing a JV scan.
+# Runs MPP tracking and finds the initial Vmpp by finding the Voc, then performing a CV scan.
 #
 # ### Params
 # **run_time:** Run time in seconds.
@@ -193,12 +193,12 @@
 # [Default: 1]
 #
 # ## MPP Cycles
-# Runs multiple MPP cycles, performing Voc and JV scans at the beginning of each.
+# Runs multiple MPP cycles, performing Voc and CV scans at the beginning of each.
 #
 # ### Params
 # **run_time:** Run time in seconds
 #
-# **scan_interval:** How often to perform a JV scan.
+# **scan_interval:** How often to perform a CV scan.
 #
 # **probe_step:** Voltage step for probe. [Default: 0.01 V]
 #
@@ -1448,9 +1448,9 @@ class GEIS( BiologicProgram ):
         data = self._run( 'geis', params, retrieve_data = retrieve_data )
 
 
-class JV_Scan( BiologicProgram ):
+class CV( BiologicProgram ):
     """
-    Runs a JV scan.
+    Runs a CV scan.
     """
     def __init__(
         self,
@@ -1462,19 +1462,44 @@ class JV_Scan( BiologicProgram ):
         :param device: BiologicDevice.
         :param params: Program parameters.
             Params are
-            start: Dictionary of start voltages keyed by channels. [Defualt: 0]
-            end: Dictionary of end voltages keyed by channels.
+            start: Dictionary of start voltages keyed by channels. Ei in the figure [Defualt: 0]
+            end: Dictionary of end voltages keyed by channels. Boundary voltage in forward scan.
+                 E1 in the figure [Defualt: 0.5]
+            E2: Boundary voltage in backward scan. E2 in the figure [Defualt:0]
+            Ef: End voltage in the final cycle scan [Defualt: 0]
             step: Voltage step. [Default: 0.01]
-            rate: Scan rate in mV/s. [Default: 10]
+            rate: Scan rate in V/s. [Default: 0.01]
             average: Average over points. [Default: False]
         :param **kwargs: Parameters passed to BiologicProgram.
         """
+        """
+        Ewe ^
+            |        E1
+            |        /\
+            |       /  \        Ef
+            |      /    \      /
+            |     /      \    /
+            |    /        \  /
+            |  Ei          \/
+            |              E2
+            |
+            –––––––––––––––––––––––––––––> t
+
+        """
         # defaults
         defaults = {
-            'start': 0,
-            'step':  0.01,
-            'rate':  0.01,
-            'average': False
+            'vs_initial':         False,
+            'start':              0,
+            'end':                0.5,
+            'E2':                 0,
+            'Ef':                 0,
+            'step':               0.01,
+            'rate':               0.01,        #V/s
+            'average':            False,
+            'N_Cycles':           0,
+            'Begin_measuring_I':  0.5,
+            'End_measuring_I':    1
+
         }
         channels = kwargs[ 'channels' ] if ( 'channels' in kwargs ) else None
         params = set_defaults( params, defaults, channels )
@@ -1493,16 +1518,23 @@ class JV_Scan( BiologicProgram ):
             dp.VMP3_Fields.CV
         )
 
-        self.field_titles = [ 'Voltage [V]', 'Current [A]', 'Power [W]' ]
+        self.field_titles = [ 'Voltage [V]', 'Current [A]', 'Time [s]', 'Power [W]', 'Cycle' ]
         
         self._fields = namedtuple( 'CV_Datum', [
-           'voltage', 'current', 'power'
+           'voltage', 'current', 'time','power', 'cycle'
         ] )
 
         self._field_values = lambda datum, segment: (
             datum.voltage,
             datum.current,
-            datum.voltage* datum.current  # power
+            dp.calculate_time(
+                datum.t_high,
+                datum.t_low,
+                segment.info,
+                segment.values
+            ),
+            datum.voltage* datum.current,  # power
+            datum.cycle
         )
 
 
@@ -1514,19 +1546,29 @@ class JV_Scan( BiologicProgram ):
         # setup scan profile ( start -> end -> start )
         params = {}
         for ch, ch_params in self.params.items():
+            """"
+            # Previously voltage_profile:
             voltage_profile = [ ch_params[ 'start' ] ]* 5
             voltage_profile[ 1 ] = ch_params[ 'end' ]
+            """
+            voltage_profile = [
+                ch_params[ 'start' ],
+                ch_params['end'],
+                ch_params['E2'],
+                ch_params['start'],
+                ch_params['Ef']
+            ]
 
             params[ ch ] = {
-                'vs_initial':   [ False ]* 5,
+                'vs_initial':   [ ch_params['vs_initial'] ]* 5,
                 'Voltage_step': voltage_profile,
                 'Scan_Rate':    [ ch_params[ 'rate' ] ]* 5,
                 'Scan_number':  2,
                 'Record_every_dE':   ch_params[ 'step' ],
                 'Average_over_dE':   ch_params[ 'average' ],
-                'N_Cycles':          0,
-                'Begin_measuring_I': 0, # start measurement at beginning of interval
-                'End_measuring_I':   1  # finish measurement at end of interval
+                'N_Cycles':          ch_params['N_Cycles'],
+                'Begin_measuring_I': ch_params['Begin_measuring_I'], # start measurement at beginning of interval
+                'End_measuring_I':   ch_params['End_measuring_I']  # finish measurement at end of interval
             }
             params[ ch ].update( map_hardware_params( ch_params, by_channel=False ) )
 
@@ -1839,7 +1881,7 @@ class MPP_Tracking( CALimit ):
 
 class MPP( MPP_Tracking ):
     """
-    Makes a JV scan and Voc scan and runs MPP tracking.
+    Makes a CV scan and Voc scan and runs MPP tracking.
     """
     def __init__(
         self,
@@ -1877,11 +1919,11 @@ class MPP( MPP_Tracking ):
         self._techniques = [ 'ocv', 'cv', 'ca' ]
 
 
-    def run( self, data = 'data', by_channel = False, jv_params = {} ):
+    def run( self, data = 'data', by_channel = False, cv = {} ):
         """
         :param data: Data folder path. [Default: 'data']
         :param by_channel: Save data by channel. [Defualt: False]
-        :param jv_params: Parameters passed to JV_Scan to find intial MPP,
+        :param cv: Parameters passed to CV to find intial MPP,
             or {} for default. [Default: {}]
 
         """
@@ -1890,19 +1932,19 @@ class MPP( MPP_Tracking ):
             os.makedirs( data )
 
         ocv_loc = 'voc' if by_channel else 'voc.csv'
-        jv_loc  = 'jv'  if by_channel else 'jv.csv'
+        cv  = 'cv'  if by_channel else 'cv.csv'
         mpp_loc = 'mpp' if by_channel else 'mpp.csv'
 
         mpp_loc = os.path.join( data, mpp_loc )
         ocv_loc = os.path.join( data, ocv_loc )
-        jv_loc  = os.path.join( data, jv_loc )
+        cv  = os.path.join( data, cv_loc )
 
         if self.autoconnect is True:
             self._connect()
 
         #--- init ---
         self.voc = self._run_ocv( ocv_loc, by_channel = by_channel ) # voc
-        self.v_mpp = self._run_jv( self.voc, jv_loc, by_channel = by_channel, jv_params = jv_params ) # jv
+        self.v_mpp = self._run_cv( self.voc, cv_loc, by_channel = by_channel, cv_params = cv_params ) # cv
 
         for ch, ch_params in self.params.items():
             ch_params[ 'init_vmpp' ] = self.v_mpp[ ch ]
@@ -1981,17 +2023,17 @@ class MPP( MPP_Tracking ):
         return voc
 
 
-    def _run_jv( self, voc, file, by_channel = False, jv_params = {} ):
+    def _run_cv( self, voc, file, by_channel = False, cv_params = {} ):
         """
-        Runs JV_Scan program to obtain initial v_mpp.
+        Runs CV scan program to obtain initial v_mpp.
 
         :param file: File for saving data.
         :param voc: Dictionary of open circuit voltages keyed by channel.
             Scan runs from Voc to 0 V.
         :param by_channel: Save data by channel. [Defualt: False]
-        :param jv_params: Parameters to use for JV_Scan, or {} for defaults.
+        :param cv_params: Parameters to use for CV_Scan, or {} for defaults.
             [Default: {}]
-        :returns: MPP voltage calculated from the JV scan results.
+        :returns: MPP voltage calculated from the CV scan results.
         """
         defaults = {
             'end':   0,
@@ -2000,18 +2042,18 @@ class MPP( MPP_Tracking ):
             'average': False
         }
 
-        jv_params = set_defaults( jv_params, defaults, self.channels )
-        jv_params = {
+        cv_params = set_defaults( cv_params, defaults, self.channels )
+        cv_params = {
             ch: {
                 'start': ch_voc,
-                **jv_params
+                **cv_params
             }
             for ch, ch_voc in voc.items()
         }
 
-        prg = JV_Scan(
+        prg = CV(
             self.device,
-            jv_params,
+            cv_params,
             channels    = None, # channels implies in params
             autoconnect = False,
             barrier  = self.barrier,
@@ -2036,7 +2078,7 @@ class MPP( MPP_Tracking ):
 
 class MPP_Cycles( MPP ):
     """
-    MPP tracking with periodic JV scans.
+    MPP tracking with periodic CV scans.
     """
 
     def __init__(
@@ -2068,11 +2110,11 @@ class MPP_Cycles( MPP ):
         self.cycle = None
 
 
-    def run( self, data = 'data', by_channel = False, jv_params = {} ):
+    def run( self, data = 'data', by_channel = False, cv = {} ):
         """
         :param data: Data folder path. [Default: 'data']
         :param by_channel: Save data by channel. [Default: False]
-        :param jv_params: Parameters for the JV_Scan. [ Default: {} ]
+        :param cv: Parameters for the CV. [ Default: {} ]
         """
         self.cycle = 0
         cycles = { ch: ch_params[ 'cycles' ] for ch, ch_params in self.params.items() }
