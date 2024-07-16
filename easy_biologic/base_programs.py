@@ -1467,7 +1467,7 @@ class CV( BiologicProgram ):
                  E1 in the figure [Defualt: 0.5]
             E2: Boundary voltage in backward scan. E2 in the figure [Defualt:0]
             Ef: End voltage in the final cycle scan [Defualt: 0]
-            step: Voltage step. [Default: 0.01]
+            step: Voltage step. dEN/1000. [Default: 0.01]
             rate: Scan rate in V/s. [Default: 0.01]
             average: Average over points. [Default: False]
         :param **kwargs: Parameters passed to BiologicProgram.
