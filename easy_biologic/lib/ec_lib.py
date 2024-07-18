@@ -159,6 +159,11 @@ class DeviceCodes( Enum ):
     KBIO_DEV_MPG210 = 29
     KBIO_DEV_MPG220 = 30
     KBIO_DEV_MPG240 = 31
+    KBIO_DEV_BP300 = 32
+    KBIO_DEV_VMP3e = 33
+    KBIO_DEV_VSP3e = 34
+    KBIO_DEV_SP50E = 35
+    KBIO_DEV_SP150E = 36
     KBIO_DEV_UNKNOWN = 255
 
 
@@ -198,6 +203,11 @@ class DeviceCodeDescriptions( Enum ):
     KBIO_DEV_MPG210 = 'MPG-210 (VMP3)'
     KBIO_DEV_MPG220 = 'MPG-220 (VMP3)'
     KBIO_DEV_MPG240 = 'MPG-240 (VMP3)'
+    KBIO_DEV_BP300 = 'BP-300 (VMP300)'
+    KBIO_DEV_VMP3e = 'VMP-3e (VMP3)'
+    KBIO_DEV_VSP3e = 'VSP-3e (VMP3)'
+    KBIO_DEV_SP50E = 'SP-50e (VMP3)'
+    KBIO_DEV_SP150E = 'SP-150e (VMP3)'
     KBIO_DEV_UNKNOWN = 'Unknown device'
 
 
@@ -215,9 +225,9 @@ class IRange( Enum ):
     m1   = 7
     m10  = 8
     m100 = 9
-    a1   = 10  # 1 amp
+    a1   = 10       # 1 amp
 
-    KEEP    = -1
+    KEEP    = -1    # Keep previous I range
     BOOSTER = 11
     AUTO    = 12
 
@@ -345,17 +355,17 @@ class DeviceInfo( c.Structure ):
     Stores information about a device.
     """
     _fields_ = [
-        ( "DeviceCode",        c.c_int32 ),
-        ( "RAMSize",           c.c_int32 ),
-        ( "CPU",               c.c_int32 ),
-        ( "NumberOfChannels",  c.c_int32 ),
-        ( "NumberOfSlots",     c.c_int32 ),
-        ( "FirmwareVersion",   c.c_int32 ),
-        ( "FirmwareDate_yyyy", c.c_int32 ),
-        ( "FirmwareDate_mm",   c.c_int32 ),
-        ( "FirmwareDate_dd",   c.c_int32 ),
-        ( "HTdisplayOn",       c.c_int32 ),
-        ( "NbOfConnectedPC",   c.c_int32 )
+        ( "DeviceCode",        c.c_int32 ),     # Device code
+        ( "RAMSize",           c.c_int32 ),     # RAM size, in MB
+        ( "CPU",               c.c_int32 ),     # Computer board cup
+        ( "NumberOfChannels",  c.c_int32 ),     # Number of channels connected
+        ( "NumberOfSlots",     c.c_int32 ),     # Number of slots available
+        ( "FirmwareVersion",   c.c_int32 ),     # Communication firmware version
+        ( "FirmwareDate_yyyy", c.c_int32 ),     # Communication firmware date YYYY
+        ( "FirmwareDate_mm",   c.c_int32 ),     # Communication firmware date MM
+        ( "FirmwareDate_dd",   c.c_int32 ),     # Communication firmware date DD
+        ( "HTdisplayOn",       c.c_int32 ),     # Allow hyper-terminal print (true/false)
+        ( "NbOfConnectedPC",   c.c_int32 )      # Number of connected PC
     ];
 
 
@@ -364,23 +374,25 @@ class ChannelInfo( c.Structure ):
     Stores information of a channel.
     """
     _fields_ = [
-        ( 'Channel',            c.c_int32 ),
-        ( 'BoardVersion',       c.c_int32 ),
-        ( 'BoardSerialNumber',  c.c_int32 ),
-        ( 'FirmwareVersion',    c.c_int32 ),
-        ( 'XilinxVersion',      c.c_int32 ),
-        ( 'AmpCode',            c.c_int32 ),
-        ( 'NbAmps',             c.c_int32 ),
-        ( 'Lcboard',            c.c_int32 ),
-        ( 'Zboard',             c.c_int32 ),
-        ( 'RESERVED',           c.c_int32 ),
-        ( 'RESERVED',           c.c_int32 ),
-        ( 'MemSize',            c.c_int32 ),
-        ( 'State',              c.c_int32 ),
-        ( 'MaxIRange',          c.c_int32 ),
-        ( 'MinIRange',          c.c_int32 ),
-        ( 'MaxBandwidth',       c.c_int32 ),
-        ( 'NbOfTechniques',     c.c_int32 )
+        ( 'Channel',            c.c_int32 ),    # Channels (0, 1, 2, ..., 15)
+        ( 'BoardVersion',       c.c_int32 ),    # Board version
+        ( 'BoardSerialNumber',  c.c_int32 ),    # Board serial number
+        ('FirmwareCode',         c.c_int32),    # Identifier of the firmware loaded on the channel
+        ( 'FirmwareVersion',    c.c_int32 ),    # Firmware version
+        ( 'XilinxVersion',      c.c_int32 ),    # Xilinx version
+        ( 'AmpCode',            c.c_int32 ),    # Amplifier code
+        ( 'NbAmps',             c.c_int32 ),    # Number of amplifiers (0, 1, 2, ..., 16)
+        ( 'Lcboard',            c.c_int32 ),    # Low current board present (= 1)
+        ( 'Zboard',             c.c_int32 ),    # TRUE if channel w/ impedance capabilities
+        ( 'RESERVED',           c.c_int32 ),    # (not used)
+        ( 'RESERVED',           c.c_int32 ),    # (not used)
+        ( 'MemSize',            c.c_int32 ),    # Memory size (in bytes)
+        ('MemFilled',            c.c_int32),    # Memory filled (in bytes)
+        ( 'State',              c.c_int32 ),    # Channel state (run/stop/pause)
+        ( 'MaxIRange',          c.c_int32 ),    # Maximum I range allowed
+        ( 'MinIRange',          c.c_int32 ),    # Minimum I range allowed
+        ( 'MaxBandwidth',       c.c_int32 ),    # Maximum bandwidth allowed
+        ( 'NbOfTechniques',     c.c_int32 )     # Number of techniques loaded
 
     ]
 
@@ -400,10 +412,10 @@ class EccParam( c.Structure ):
     Represents a single technique parameter.
     """
     _fields_ = [
-        ( 'ParamStr',   c.c_char* 64 ),
-        ( 'ParamType',  c.c_int32  ),
-        ( 'ParamVal',   c.c_int32  ),
-        ( 'ParamIndex', c.c_int32  )
+        ( 'ParamStr',   c.c_char* 64 ),     # string defining the parameter label
+        ( 'ParamType',  c.c_int32  ),       # Parameter type (0=int32, 1=boolean, 2=single)
+        ( 'ParamVal',   c.c_int32  ),       # Parameter value (WARNING: numerical value)
+        ( 'ParamIndex', c.c_int32  )        # Parameter index (0-based). Useful for multi-step parameters only.
     ]
 
 
@@ -424,25 +436,25 @@ class CurrentValues( c.Structure ):
     Represents the values measured from and states of the device.
     """
     _fields_ = [
-        ( 'State',       c.c_int32 ),
-        ( 'MemFilled',   c.c_int32 ),
-        ( 'TimeBase',    c.c_float ),
-        ( 'Ewe',         c.c_float ),
-        ( 'EweRangeMin', c.c_float ),
-        ( 'EweRangeMax', c.c_float ),
-        ( 'Ece',         c.c_float ),
-        ( 'EceRangeMin', c.c_float ),
-        ( 'EceRangeMax', c.c_float ),
-        ( 'Eoverflow',   c.c_int32 ),
-        ( 'I',           c.c_float ),
-        ( 'IRange',      c.c_int32 ),
-        ( 'Ioverflow',   c.c_int32 ),
-        ( 'ElapsedTime', c.c_float ),
-        ( 'Freq',        c.c_float ),
-        ( 'Rcomp',       c.c_float ),
-        ( 'Saturation',  c.c_int32 ),
-        ( 'OptErr',      c.c_int32 ),
-        ( 'OptPos',      c.c_int32 )
+        ( 'State',       c.c_int32 ),   # Channel state (run/stop/pause)
+        ( 'MemFilled',   c.c_int32 ),   # Memory filled (in Bytes)
+        ( 'TimeBase',    c.c_float ),   # Time base (s)
+        ( 'Ewe',         c.c_float ),   # Working electrode potential (V)
+        ( 'EweRangeMin', c.c_float ),   # Ewe min range (V)
+        ( 'EweRangeMax', c.c_float ),   # Ewe max range (V)
+        ( 'Ece',         c.c_float ),   # Counter electrode potential (V)
+        ( 'EceRangeMin', c.c_float ),   # Ece min range (V)
+        ( 'EceRangeMax', c.c_float ),   # Ece max range (V)
+        ( 'Eoverflow',   c.c_int32 ),   # Potential overflow
+        ( 'I',           c.c_float ),   # Current value (A)
+        ( 'IRange',      c.c_int32 ),   # Current range
+        ( 'Ioverflow',   c.c_int32 ),   # Current overflow
+        ( 'ElapsedTime', c.c_float ),   # Elapsed time (s)
+        ( 'Freq',        c.c_float ),   # Frequency (Hz)
+        ( 'Rcomp',       c.c_float ),   # R compensation (Ohm)
+        ( 'Saturation',  c.c_int32 ),   # E or/and I saturation
+        ( 'OptErr',      c.c_int32 ),   # Hardware Option Error Code
+        ( 'OptPos',      c.c_int32 )    # Index of the option generating the OptErr (VMP-300 series only, otherwise 0)
     ]
 
 
@@ -452,24 +464,23 @@ class DataInfo( c.Structure ):
     Used to parse the data collected from the device.
     """
     _fields_ = [
-        ( 'IRQskipped',      c.c_int32  ),
-        ( 'NbRows',          c.c_int32  ),
-        ( 'NbCols',          c.c_int32  ),
-        ( 'TechniqueIndex',  c.c_int32  ),
-        ( 'TechniqueID',     c.c_int32  ),
-        ( 'ProcessIndex',    c.c_int32  ),
-        ( 'loop',            c.c_int32  ),
-        ( 'StartTime',       c.c_double ),
-        ( 'MuxPad',          c.c_int32  )
+        ( 'IRQskipped',      c.c_int32  ),  # Number of IRQ skipped
+        ( 'NbRows',          c.c_int32  ),  # Number of rows in the data buffer
+        ( 'NbCols',          c.c_int32  ),  # Number of columns in the data buffer
+        ( 'TechniqueIndex',  c.c_int32  ),  # Index of technique that has generated data.
+                                            # Only useful for linked techniques
+        ( 'TechniqueID',     c.c_int32  ),  # Identifier of the technique which has generated the data.
+                                            # Must be used to identify the data format in the data buffer
+        ( 'ProcessIndex',    c.c_int32  ),  # Index of the process of the technique which has generated the data.
+                                            # Must be used to identify the data format in the data buffer
+        ( 'loop',            c.c_int32  ),  # Loop number
+        ( 'StartTime',       c.c_double ),  # Start time (s)
+        ( 'MuxPad',          c.c_int32  )   # (no longer used)
     ]
 
 
 # device families
 
-# TODO [2]: Incorporate unknown device codes
-# Should also include
-# VMP3E, VSP3E, SP50E, SP150E
-# but do not have their device codes.
 VMP3_DEVICE_FAMILY = {
     DeviceCodes.KBIO_DEV_VMP2,
     DeviceCodes.KBIO_DEV_VMP3,
@@ -489,20 +500,25 @@ VMP3_DEVICE_FAMILY = {
     DeviceCodes.KBIO_DEV_MPG205,
     DeviceCodes.KBIO_DEV_MPG210,
     DeviceCodes.KBIO_DEV_MPG220,
-    DeviceCodes.KBIO_DEV_MPG240
+    DeviceCodes.KBIO_DEV_MPG240,
+    DeviceCodes.KBIO_DEV_VMP3e,
+    DeviceCodes.KBIO_DEV_VSP3e,
+    DeviceCodes.KBIO_DEV_SP50E,
+    DeviceCodes.KBIO_DEV_SP150E
 }
 
     
 # TODO [2]: Incorporate unknown device codes
 # Should also include
-# SP100, BP300
+# SP100
 # but do not have their device codes.
 SP300_DEVICE_FAMILY = {
     DeviceCodes.KBIO_DEV_SP200,
     DeviceCodes.KBIO_DEV_SP300,
     DeviceCodes.KBIO_DEV_VSP300,
     DeviceCodes.KBIO_DEV_VMP300,
-    DeviceCodes.KBIO_DEV_SP240
+    DeviceCodes.KBIO_DEV_SP240,
+    DeviceCodes.KBIO_DEV_BP300
 }
 
 # TODO [2]: Incorporate unknown device codes.

@@ -8,3 +8,4 @@ tests/data
 tests/log*
 tests/test
 tests/*.ipynb
+Change_history.md

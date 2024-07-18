@@ -15,9 +15,24 @@ class EcError( Exception ):
             'No instrument connected.'
         ),
 
+        -2: (
+            'ERR_GEN_CONNECTIONINPROGRESS',
+            'Connection in progress.'
+        ),
+
+        -3: (
+            'ERR_GEN_CHANNELNOTPLUGGED',
+            'Selected channel(s) unplugged.'
+        ),
+
         -4: (
             'ERR_GEN_INVALIDPARAMETERS',
             'Invalid function parameters.'
+        ),
+
+        -5: (
+            'ERR_GEN_FILENOTEXISTS',
+            'Selected file does not exist.'
         ),
 
         -6: (
@@ -30,9 +45,19 @@ class EcError( Exception ):
             'No channel selected'
         ),
 
+        -8: (
+            'ERR_GEN_INVALIDCONF',
+            'invalid instrument configuration'
+        ),
+
         -9: (
             'ERR_GEN_ECLAB_LOADED',
             'ECLab firmware laoded on instrument.'
+        ),
+
+        -10: (
+            'ERR_GEN_LIBNOTCORRECTLYLOADED',
+            'Library not correctly loaded in memory.'
         ),
 
         -11: (
@@ -45,9 +70,44 @@ class EcError( Exception ):
             'Function of the library already in progress.'
         ),
 
+        -13: (
+            'ERR_GEN_CHANNEL_RUNNING',
+            'Selected channel(s) already used.'
+        ),
+
+        -14: (
+            'ERR_GEN_DEVICE_NOTALLOWED',
+            'Device not allowed.'
+        ),
+
+        -15: (
+            'ERR_GEN_UPDATEPARAMETERS',
+            'Invalid update function parameters.'
+        ),
+
+        -101: (
+            'ERR_INSTR_VMEERROR',
+            'Internal instrument communication failed.'
+        ),
+
         -102: (
             'ERR_INSTR_TOOMANYDATA',
             'Too many data to transfer from the instrument (device error)'
+        ),
+
+        -103: (
+            'ERR_INSTR_RESPNOTPOSSIBLE',
+            'Selected channel(s) unplugged (device error).'
+        ),
+
+        -104: (
+            'ERR_INSTR_RESPERROR',
+            'Instrument response error.'
+        ),
+
+        -105: (
+            'ERR_INSTR_MSGSIZEERROR',
+            'Invalid message size.'
         ),
 
         -200: (
@@ -60,9 +120,34 @@ class EcError( Exception ):
             'Could not establish communication with instrument.'
         ),
 
+        -202: (
+            'ERR_COMM_WAITINGACK',
+            'Waiting for the instrument response.'
+        ),
+
+        -203: (
+            'ERR_COMM_INVALIDIPADDRESS',
+            'Invalid IP address.'
+        ),
+
         -204: (
             'ERR_COMM_ALLOCMEMFAILED',
             'Cannot allocate memory in the instrument.'
+        ),
+
+        -205: (
+            'ERR_COMM_LOADFIRMWAREFAILED',
+            'Cannot load firmware on the selected channel(s).'
+        ),
+
+        -206: (
+            'ERR_COMM_INCOMPATIBLESERVER',
+            'Communication firmware not compatible with the library.'
+        ),
+
+        -207: (
+            'ERR_COMM_MAXCONNREACHED',
+            'Maximum number of allowed connections reached.'
         ),
 
         -308: (
@@ -93,6 +178,16 @@ class EcError( Exception ):
         -403: (
             'ERR_TECH_LOADTECHNIQUEFAILED',
             'Cannot load the ECC file.'
+        ),
+
+        -404: (
+            'ERR_TECH_DATACORRUPTED',
+            'Data returned by the instrument are corrupted..'
+        ),
+
+        -405: (
+            'ERR_TECH_MEMFULL',
+            'Cannot load techniques: full memory.'
         )
     }
 
