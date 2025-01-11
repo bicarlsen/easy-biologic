@@ -142,13 +142,16 @@ peis.run('data')
 peis.save_data(save_path_peis)
 ```
 
+## Extras
++ `pandas`: Use [`pandas`](https://pandas.pydata.org/) to save data.
+
 ## Known issues
 + **USB connection:** Often times using a USB connection will give a `ERR_COMM_CONNECTIONFAILED (-201)` error. We have found that USB can be unreliable, and a TCP connection is resolves this issue.
 
 ## Adding techniques
 BioLogic will often update their firmware which needs to be included in this package. To do so
-1. Download the [EC-Lab Developer Package](https://my.biologic.net/support-software/ec-lab-oem-development-package/), noting its install path (typically `C:\EC-Lab Development Package`).
-2. Create a new folder in the `techniques` folder of this package with the version number. (e.g. For firmware version `1.2.3` I would create the folder `techniques/1.2.3`.)
-3. Copy the contents of `EC-Lab Development Package\lib` folder (typically `C:\EC-Lab Development Package\lib`) into the folder created in step 2. To ensure you copied the correct files, view previous technique version folders for examples.
-4. Update the [`techniques_version.json`]() file to the latest version you just added.
-5. [Create a pull request](https://github.com/bicarlsen/easy-biologic/pulls) to have it included in the package, so everybody benefits :).
+0. Download this package. The easiest way to do this is `git clone https://github.com/bicarlsen/easy-biologic.git`.
+1. Download the [EC-Lab Developer Package](https://www.biologic.net/softwares/ec-lab-oem-development-package/), noting its install path (typically `C:\EC-Lab Development Package`).
+2. Copy the `EC-Lab Development Package\lib` folder (typically `C:\EC-Lab Development Package\lib`) into the folder `easy-biologic/src/techniques` folder and rename it with the major and minor version of the firmware (e.g. `6.04`). You can view previous technique version folders for examples.
+3. Update the [`src/data/techniques_version.json`](src/data/techniques_version.json) file to the version you just added.
+4. (optional) [Create a pull request](https://github.com/bicarlsen/easy-biologic/pulls) to have it included in the package, so everybody benefits :).
