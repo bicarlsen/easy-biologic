@@ -9,7 +9,7 @@ from glob import glob
 
 def technique_directory(version=None):
     """
-    :param version: Techniques version or None to use default.
+    :param version: Techniques version or `None` to use default.
         [Default: None]
     :returns: Path to techniques resource directory.
     """
@@ -18,7 +18,7 @@ def technique_directory(version=None):
         version = default_techniques_version()
 
     pkg_resources = importlib.resources.files("easy_biologic")
-    return pkg_resources.parent.joinpath("techniques", version)
+    return pkg_resources.joinpath("include", "techniques", version)
 
 
 def default_techniques_version():
@@ -26,7 +26,7 @@ def default_techniques_version():
     :returns: Default version of techniques.
     """
     pkg_resources = importlib.resources.files("easy_biologic")
-    version_file = pkg_resources.parent.joinpath("data", "techniques_version.json")
+    version_file = pkg_resources.joinpath("include", "data", "techniques_version.json")
     try:
         with open(version_file) as vf:
             info = json.load(vf)
@@ -45,7 +45,7 @@ def default_techniques_version():
         tech_dirs = [dir for dir in os.listdir(techniques_dir) if os.path.isdir(dir)]
 
         # parse versions
-        version_pattern = "([\d\.]+)"
+        version_pattern = "([\\d\\.]+)"
         versions = []
         for dir in tech_dirs:
             match = re.match(version_pattern, os.path.basename(dir))

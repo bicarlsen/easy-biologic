@@ -9,3 +9,4 @@ from .program import ProgramRunner
 
 from . import program
 from . import base_programs
+from .common import default_techniques_version

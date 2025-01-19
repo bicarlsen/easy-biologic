@@ -2,7 +2,6 @@ import os
 import logging
 import ctypes as c
 import platform
-import pkg_resources
 
 from .. import common
 

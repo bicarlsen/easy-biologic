@@ -32,8 +32,5 @@ Homepage = "https://github.com/bicarlsen/easy-biologic"
 [tool.hatch.version]
 path = "src/easy_biologic/__about__.py"
 
-[tool.hatch.build]
-include = ["src/techniques/**/*", "src/data/*"]
-
 [tool.hatch.build.targets.wheel]
 packages = ["src/easy_biologic"]
